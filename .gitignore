@@ -1,0 +1,6 @@
+venv/
+question_sets/
+__pycache__/
+build/
+dist/
+*.spec
