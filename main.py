@@ -264,8 +264,9 @@ class TeamSetupFrame(tk.Frame):
         self.active_widgets['team_entry_widgets'] = []
 
         # title for the block
-        tk.Label(frame, text="Team Names:", bg=self.app.bg_color,
-                fg="white").pack(pady=(0,10))
+        teams_entry_title_label = tk.Label(frame, text="Team Names:", bg=self.app.bg_color, fg="white", font=self.app.fonts["label"])
+        teams_entry_title_label.pack(pady=(0,10))
+        self.active_widgets['teams_entry_title_label'] = teams_entry_title_label
 
         # build each team entry
         for i in range(self.num_teams.get()):
@@ -313,9 +314,6 @@ class TeamSetupFrame(tk.Frame):
 
         # do a full update so that our idle callback fires immediately
         self.update()
-
-
-
 
 
     def update_team_count(self, num):
