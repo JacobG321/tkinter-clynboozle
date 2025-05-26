@@ -1,11 +1,7 @@
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox, simpledialog
-import json
-import os
-import random
 from PIL import Image, ImageTk
-import io
-import base64
+import io, os, base64, json
 
 
 class QuestionSet:
@@ -526,79 +522,105 @@ class QuestionSetManager:
 
         # Helper function to load and resize an image
         def load_image(file_path, max_size=(240, 160)):
+            """
+            Load an image, serialize a compressed full-resolution copy to base64,
+            and return a thumbnail PhotoImage for display.
+            """
             if not file_path:
                 return None
 
             try:
-                # Open and resize the image while preserving aspect ratio
+                # --- 1) Open original ---
                 img = Image.open(file_path)
-                # Use LANCZOS resampling if available (PIL>=9.1.0), otherwise use ANTIALIAS
+
+                # --- 2) Serialize full-res with compression ---
+                full_buffer = io.BytesIO()
+                ext = os.path.splitext(file_path)[1].lower()
+                has_alpha = img.mode in ("RGBA", "LA") or ("transparency" in img.info)
+                if not has_alpha and ext in (".jpg", ".jpeg"):
+                    # keep JPEG
+                    rgb = img.convert("RGB")
+                    rgb.save(
+                        full_buffer,
+                        format="JPEG",
+                        quality=85,
+                        optimize=True,
+                        subsampling=0
+                    )
+                elif not has_alpha:
+                    # convert anything else to JPEG
+                    rgb = img.convert("RGB")
+                    rgb.save(
+                        full_buffer,
+                        format="JPEG",
+                        quality=85,
+                        optimize=True,
+                        subsampling=0
+                    )
+                else:
+                    # preserve alpha as optimized PNG
+                    img.save(
+                        full_buffer,
+                        format="PNG",
+                        optimize=True,
+                        compress_level=9
+                    )
+
+                full_b64 = base64.b64encode(full_buffer.getvalue()).decode("utf-8")
+
+                # --- 3) Make a thumbnail copy for UI ---
+                thumb = img.copy()
                 try:
-                    img.thumbnail(max_size, Image.Resampling.LANCZOS)
+                    thumb.thumbnail(max_size, Image.Resampling.LANCZOS)
                 except (AttributeError, TypeError):
-                    try:
-                        img.thumbnail(max_size, Image.LANCZOS)
-                    except (AttributeError, TypeError):
-                        img.thumbnail(
-                            max_size,
-                            Image.ANTIALIAS if hasattr(Image, "ANTIALIAS") else 1,
-                        )
-
-                # Convert to base64 for storage
-                buffer = io.BytesIO()
-                img.save(buffer, format="PNG")
-                img_str = base64.b64encode(buffer.getvalue()).decode("utf-8")
-
-                # Create PhotoImage for display
-                photo_img = ImageTk.PhotoImage(img)
-
-                # Get just the filename (not the full path)
-                filename = os.path.basename(file_path)
+                    thumb.thumbnail(
+                        max_size,
+                        Image.LANCZOS if hasattr(Image, "LANCZOS") else Image.ANTIALIAS
+                    )
+                photo_img = ImageTk.PhotoImage(thumb)
 
                 return {
                     "path": file_path,
-                    "filename": filename,
-                    "data": img_str,
-                    "photo_img": photo_img,
+                    "filename": os.path.basename(file_path),
+                    "data": full_b64,         # compressed master image
+                    "photo_img": photo_img,   # small preview
                     "width": img.width,
                     "height": img.height,
                 }
+
             except Exception as e:
                 print(f"Error loading image: {e}")
                 return None
 
-        # Function to convert base64 string back to PhotoImage
+
         def base64_to_image(b64_str, max_size=(240, 160), filename=""):
+            """
+            Decode the stored base64 image (JPEG or PNG) and thumbnail it for display.
+            """
             if not b64_str:
                 return None
 
             try:
-                # Decode the base64 string
                 img_data = base64.b64decode(b64_str)
                 img = Image.open(io.BytesIO(img_data))
-                # Use LANCZOS resampling if available (PIL>=9.1.0), otherwise use ANTIALIAS
+
                 try:
                     img.thumbnail(max_size, Image.Resampling.LANCZOS)
                 except (AttributeError, TypeError):
-                    try:
-                        img.thumbnail(max_size, Image.LANCZOS)
-                    except (AttributeError, TypeError):
-                        img.thumbnail(
-                            max_size,
-                            Image.ANTIALIAS if hasattr(Image, "ANTIALIAS") else 1,
-                        )
+                    img.thumbnail(
+                        max_size,
+                        Image.LANCZOS if hasattr(Image, "LANCZOS") else Image.ANTIALIAS
+                    )
 
-                # Create PhotoImage for display
                 photo_img = ImageTk.PhotoImage(img)
-
-                # Store filename if provided
                 if filename:
                     setattr(photo_img, "filename", filename)
-
                 return photo_img
+
             except Exception as e:
                 print(f"Error converting base64 to image: {e}")
                 return None
+
 
         # Dialog to edit a question
         def edit_question_dialog(
