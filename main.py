@@ -708,145 +708,145 @@ class QuizGame:
 
 
 
-def reveal_question(self, idx):
-    """Display a question when a tile is clicked (auto-sizing window to content)."""
-    if idx in self.active_frame.used_tiles:
-        return
-
-    question_data = self.questions[idx]
-    row, col = divmod(idx, self.grid_cols)
-
-    # Defensive check
-    if row >= len(self.active_frame.active_widgets['buttons']):
-        return
-    btn_tuple = self.active_frame.active_widgets['buttons'][row][col]
-    if not btn_tuple:
-        return
-    btn_frame, btn_label = btn_tuple
-
-    # Toplevel question window (autosizing)
-    question_window = tk.Toplevel(self.root)
-    question_window.title("Question")
-    question_window.configure(bg=self.bg_color)
-    # ALLOW true resize (don't restrict)
-    question_window.resizable(True, True)
-
-    # Main question label (wrap at 500px for wider text)
-    max_wrap = 500
-    qlabel = tk.Label(
-        question_window,
-        text=question_data["question"],
-        font=("Arial", 16),
-        bg=self.bg_color,
-        fg="white",
-        wraplength=max_wrap,
-        justify="center",
-    )
-    qlabel.pack(pady=20, padx=20, expand=True, fill=tk.BOTH)
-    question_window.update_idletasks()
-
-    def mark_correct():
-        self.active_frame.used_tiles.add(idx)
-        self.teams[self.current_team] += question_data["points"]
-        self.update_scores()
-        btn_frame.configure(bg="#4CAF50")  # Green
-        btn_label.configure(bg="#4CAF50", text="✓")
-        question_window.destroy()
-        self.next_team()
-        if len(self.active_frame.used_tiles) == len(self.questions):
-            self.show_game_over()
-
-    def mark_wrong():
-        self.active_frame.used_tiles.add(idx)
-        btn_frame.configure(bg="#F44336")  # Red
-        btn_label.configure(bg="#F44336", text="✗")
-        question_window.destroy()
-        self.next_team()
-        if len(self.active_frame.used_tiles) == len(self.questions):
-            self.show_game_over()
-
-    def reveal_answer():
-        # Prevent adding multiple answers
-        if hasattr(question_window, "_answer_revealed"):
+    def reveal_question(self, idx):
+        """Display a question when a tile is clicked (auto-sizing window to content)."""
+        if idx in self.active_frame.used_tiles:
             return
-        question_window._answer_revealed = True
 
-        # Add the answer label (wrap at same width)
-        answer_label = tk.Label(
+        question_data = self.questions[idx]
+        row, col = divmod(idx, self.grid_cols)
+
+        # Defensive check
+        if row >= len(self.active_frame.active_widgets['buttons']):
+            return
+        btn_tuple = self.active_frame.active_widgets['buttons'][row][col]
+        if not btn_tuple:
+            return
+        btn_frame, btn_label = btn_tuple
+
+        # Toplevel question window (autosizing)
+        question_window = tk.Toplevel(self.root)
+        question_window.title("Question")
+        question_window.configure(bg=self.bg_color)
+        # ALLOW true resize (don't restrict)
+        question_window.resizable(True, True)
+
+        # Main question label (wrap at 500px for wider text)
+        max_wrap = 500
+        qlabel = tk.Label(
             question_window,
-            text=f"Answer: {question_data['answer']}",
-            font=("Arial", 14, "bold"),
-            fg="#2196F3",
+            text=question_data["question"],
+            font=("Arial", 16),
             bg=self.bg_color,
+            fg="white",
             wraplength=max_wrap,
             justify="center",
         )
-        answer_label.pack(pady=10, padx=20, fill=tk.BOTH)
+        qlabel.pack(pady=20, padx=20, expand=True, fill=tk.BOTH)
         question_window.update_idletasks()
 
-        # Action buttons frame for correct/wrong
-        action_frame = tk.Frame(question_window, bg=self.bg_color)
-        action_frame.pack(pady=10, fill=tk.X, expand=True)
+        def mark_correct():
+            self.active_frame.used_tiles.add(idx)
+            self.teams[self.current_team] += question_data["points"]
+            self.update_scores()
+            btn_frame.configure(bg="#4CAF50")  # Green
+            btn_label.configure(bg="#4CAF50", text="✓")
+            question_window.destroy()
+            self.next_team()
+            if len(self.active_frame.used_tiles) == len(self.questions):
+                self.show_game_over()
 
-        # Correct button
-        correct_frame = tk.Frame(action_frame, bg="#4CAF50", width=120, height=40)
-        correct_frame.pack(side=tk.LEFT, padx=20, expand=True, fill=tk.X)
-        correct_frame.pack_propagate(False)
-        correct_label = tk.Label(
-            correct_frame,
-            text="✓ Correct",
+        def mark_wrong():
+            self.active_frame.used_tiles.add(idx)
+            btn_frame.configure(bg="#F44336")  # Red
+            btn_label.configure(bg="#F44336", text="✗")
+            question_window.destroy()
+            self.next_team()
+            if len(self.active_frame.used_tiles) == len(self.questions):
+                self.show_game_over()
+
+        def reveal_answer():
+            # Prevent adding multiple answers
+            if hasattr(question_window, "_answer_revealed"):
+                return
+            question_window._answer_revealed = True
+
+            # Add the answer label (wrap at same width)
+            answer_label = tk.Label(
+                question_window,
+                text=f"Answer: {question_data['answer']}",
+                font=("Arial", 14, "bold"),
+                fg="#2196F3",
+                bg=self.bg_color,
+                wraplength=max_wrap,
+                justify="center",
+            )
+            answer_label.pack(pady=10, padx=20, fill=tk.BOTH)
+            question_window.update_idletasks()
+
+            # Action buttons frame for correct/wrong
+            action_frame = tk.Frame(question_window, bg=self.bg_color)
+            action_frame.pack(pady=10, fill=tk.X, expand=True)
+
+            # Correct button
+            correct_frame = tk.Frame(action_frame, bg="#4CAF50", width=120, height=40)
+            correct_frame.pack(side=tk.LEFT, padx=20, expand=True, fill=tk.X)
+            correct_frame.pack_propagate(False)
+            correct_label = tk.Label(
+                correct_frame,
+                text="✓ Correct",
+                font=("Arial", 12, "bold"),
+                bg="#4CAF50",
+                fg="white"
+            )
+            correct_label.pack(expand=True, fill=tk.BOTH)
+            correct_frame.bind("<Button-1>", lambda _event: mark_correct())
+            correct_label.bind("<Button-1>", lambda _event: mark_correct())
+
+            # Wrong button
+            wrong_frame = tk.Frame(action_frame, bg="#F44336", width=120, height=40)
+            wrong_frame.pack(side=tk.RIGHT, padx=20, expand=True, fill=tk.X)
+            wrong_frame.pack_propagate(False)
+            wrong_label = tk.Label(
+                wrong_frame,
+                text="✗ Wrong",
+                font=("Arial", 12, "bold"),
+                bg="#F44336",
+                fg="white"
+            )
+            wrong_label.pack(expand=True, fill=tk.BOTH)
+            wrong_frame.bind("<Button-1>", lambda _event: mark_wrong())
+            wrong_label.bind("<Button-1>", lambda _event: mark_wrong())
+
+            # Let geometry manager update, then resize/center
+            question_window.update_idletasks()
+            # Set the window size min to a reasonable width and new required height
+            win_w = max(400, question_window.winfo_reqwidth())
+            win_h = question_window.winfo_reqheight()
+            self.center_window(question_window, win_w, win_h)
+            question_window.minsize(win_w, win_h)
+
+        # "Reveal Answer" button
+        reveal_frame = tk.Frame(question_window, bg="#2196F3", width=150, height=40)
+        reveal_frame.pack(pady=10)
+        reveal_frame.pack_propagate(False)
+        reveal_label = tk.Label(
+            reveal_frame,
+            text="Reveal Answer",
             font=("Arial", 12, "bold"),
-            bg="#4CAF50",
+            bg="#2196F3",
             fg="white"
         )
-        correct_label.pack(expand=True, fill=tk.BOTH)
-        correct_frame.bind("<Button-1>", lambda _event: mark_correct())
-        correct_label.bind("<Button-1>", lambda _event: mark_correct())
+        reveal_label.pack(expand=True, fill=tk.BOTH)
+        reveal_frame.bind("<Button-1>", lambda _event: reveal_answer())
+        reveal_label.bind("<Button-1>", lambda _event: reveal_answer())
 
-        # Wrong button
-        wrong_frame = tk.Frame(action_frame, bg="#F44336", width=120, height=40)
-        wrong_frame.pack(side=tk.RIGHT, padx=20, expand=True, fill=tk.X)
-        wrong_frame.pack_propagate(False)
-        wrong_label = tk.Label(
-            wrong_frame,
-            text="✗ Wrong",
-            font=("Arial", 12, "bold"),
-            bg="#F44336",
-            fg="white"
-        )
-        wrong_label.pack(expand=True, fill=tk.BOTH)
-        wrong_frame.bind("<Button-1>", lambda _event: mark_wrong())
-        wrong_label.bind("<Button-1>", lambda _event: mark_wrong())
-
-        # Let geometry manager update, then resize/center
+        # Let geometry manager update, set minsize/center immediately for "just the question"
         question_window.update_idletasks()
-        # Set the window size min to a reasonable width and new required height
         win_w = max(400, question_window.winfo_reqwidth())
         win_h = question_window.winfo_reqheight()
         self.center_window(question_window, win_w, win_h)
         question_window.minsize(win_w, win_h)
-
-    # "Reveal Answer" button
-    reveal_frame = tk.Frame(question_window, bg="#2196F3", width=150, height=40)
-    reveal_frame.pack(pady=10)
-    reveal_frame.pack_propagate(False)
-    reveal_label = tk.Label(
-        reveal_frame,
-        text="Reveal Answer",
-        font=("Arial", 12, "bold"),
-        bg="#2196F3",
-        fg="white"
-    )
-    reveal_label.pack(expand=True, fill=tk.BOTH)
-    reveal_frame.bind("<Button-1>", lambda _event: reveal_answer())
-    reveal_label.bind("<Button-1>", lambda _event: reveal_answer())
-
-    # Let geometry manager update, set minsize/center immediately for "just the question"
-    question_window.update_idletasks()
-    win_w = max(400, question_window.winfo_reqwidth())
-    win_h = question_window.winfo_reqheight()
-    self.center_window(question_window, win_w, win_h)
-    question_window.minsize(win_w, win_h)
 
     def show_game_menu(self):
         """Show an in-game menu as a Toplevel."""
