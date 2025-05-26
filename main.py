@@ -251,27 +251,30 @@ class TeamSetupFrame(tk.Frame):
         self.resize()
 
     def create_team_entries(self):
-        """Create entry fields for team names (pre‑filled from initial_names)."""
+        """Create entry fields for team names (pre-filled from initial_names)."""
         frame = self.active_widgets['teams_entry_frame']
+        # clear out any old widgets
         for w in frame.winfo_children():
             w.destroy()
 
         self.team_entries = []
         self.active_widgets['team_entry_widgets'] = []
 
+        # title for the block
         tk.Label(frame, text="Team Names:", bg=self.app.bg_color,
-                 fg="white").pack(pady=(0,10))
+                fg="white").pack(pady=(0,10))
 
+        # build each team entry
         for i in range(self.num_teams.get()):
             default = (self.initial_names[i]
-                       if i < len(self.initial_names)
-                       else f"Team {i+1}")
+                    if i < len(self.initial_names)
+                    else f"Team {i+1}")
 
             team_frame = tk.Frame(frame, bg=self.app.bg_color)
             team_frame.pack(pady=5, fill=tk.X, padx=20)
 
             lbl = tk.Label(team_frame, text=f"Team {i+1}:", bg=self.app.bg_color,
-                           fg="white", width=10, anchor="e")
+                        fg="white", width=10, anchor="e")
             lbl.pack(side=tk.LEFT, padx=(0,10))
 
             entry_holder = tk.Frame(team_frame, bg="white",
@@ -281,11 +284,13 @@ class TeamSetupFrame(tk.Frame):
             entry_holder.pack_propagate(False)
 
             var = tk.StringVar(value=default)
-            entry = tk.Entry(entry_holder, textvariable=var,
-                             border=0, highlightthickness=0,
-                             bg="white", fg="black")
+            entry = tk.Entry(entry_holder,
+                            textvariable=var,
+                            border=0, highlightthickness=0,
+                            bg="white", fg="black")
             entry.pack(fill=tk.BOTH, expand=True, padx=5, pady=2)
 
+            # store references
             self.team_entries.append(var)
             self.active_widgets['team_entry_widgets'].append({
                 'frame': team_frame,
@@ -294,8 +299,20 @@ class TeamSetupFrame(tk.Frame):
                 'entry': entry
             })
 
-        # finally, give them a proper height immediately
+        # layout/size them correctly
         self.resize()
+
+        # after everything is drawn, force all entries to black text
+        self.after_idle(lambda: [
+            wdict['entry'].configure(fg="black")
+            for wdict in self.active_widgets['team_entry_widgets']
+        ])
+
+        # do a full update so that our idle callback fires immediately
+        self.update()
+
+
+
 
 
     def update_team_count(self, num):
