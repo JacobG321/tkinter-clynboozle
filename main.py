@@ -1,5 +1,8 @@
 import tkinter as tk
 from tkinter import messagebox, font
+from PIL import Image, ImageTk
+import io
+import base64
 
 # Import the QuestionSetManager class from question_set_manager.py
 from question_set_manager import QuestionSetManager, QuestionSet
@@ -427,6 +430,7 @@ class GameBoardFrame(tk.Frame):
         self.used_tiles = set()
         self.current_team = None
         self.active_widgets = {}
+        self.tile_images = {}  # Store tile images by question index
 
         self._prepare_layout()
 
@@ -487,14 +491,62 @@ class GameBoardFrame(tk.Frame):
                 btn_frame.grid(row=i, column=j, padx=5, pady=5, sticky="nsew")
                 btn_frame.grid_propagate(False)
 
-                btn_label = tk.Label(btn_frame, text=str(self.app.questions[idx]["points"]),
-                                     bg=self.app.button_color, fg="white")
-                btn_label.pack(expand=True, fill=tk.BOTH)
+                # Check if this question has a tile image
+                question = self.app.questions[idx]
+                tile_image_data = question.get("tile_image", "")
+                points_label = None  # Initialize here
+                
+                # Create inner frame for image and points
+                inner_frame = tk.Frame(btn_frame, bg=self.app.button_color)
+                inner_frame.pack(expand=True, fill=tk.BOTH, padx=2, pady=2)
+                
+                if tile_image_data:
+                    # Handle both string and dict formats
+                    if isinstance(tile_image_data, dict):
+                        image_str = tile_image_data.get("data", "")
+                    else:
+                        image_str = tile_image_data
+                    
+                    if image_str:
+                        try:
+                            # Convert base64 to image
+                            img_data = base64.b64decode(image_str)
+                            img = Image.open(io.BytesIO(img_data))
+                            # We'll resize this properly in the resize() method
+                            self.tile_images[idx] = img
+                            
+                            # Create label for image
+                            btn_label = tk.Label(inner_frame, bg=self.app.button_color, compound="top")
+                            btn_label.pack(expand=True, fill=tk.BOTH)
+                            
+                            # Create label for points below image
+                            points_label = tk.Label(inner_frame, text=str(question["points"]),
+                                                   bg=self.app.button_color, fg="white")
+                            points_label.pack(side=tk.BOTTOM)
+                        except Exception as e:
+                            print(f"Error loading tile image for question {idx}: {e}")
+                            # Fallback to text only
+                            btn_label = tk.Label(inner_frame, text=str(question["points"]),
+                                                bg=self.app.button_color, fg="white")
+                            btn_label.pack(expand=True, fill=tk.BOTH)
+                    else:
+                        # No image data, use text
+                        btn_label = tk.Label(inner_frame, text=str(question["points"]),
+                                            bg=self.app.button_color, fg="white")
+                        btn_label.pack(expand=True, fill=tk.BOTH)
+                else:
+                    # No tile image, show points
+                    btn_label = tk.Label(inner_frame, text=str(question["points"]),
+                                         bg=self.app.button_color, fg="white")
+                    btn_label.pack(expand=True, fill=tk.BOTH)
 
                 btn_frame.bind("<Button-1>", lambda _event, i=idx: self.app.reveal_question(i))
                 btn_label.bind("<Button-1>", lambda _event, i=idx: self.app.reveal_question(i))
+                inner_frame.bind("<Button-1>", lambda _event, i=idx: self.app.reveal_question(i))
+                if points_label:
+                    points_label.bind("<Button-1>", lambda _event, i=idx: self.app.reveal_question(i))
 
-                row_widgets.append((btn_frame, btn_label))
+                row_widgets.append((btn_frame, btn_label, inner_frame, points_label))
             self.active_widgets['buttons'].append(row_widgets)
 
         # Menu button
@@ -553,18 +605,64 @@ class GameBoardFrame(tk.Frame):
                         btn_tuple = self.active_widgets['buttons'][i][j]
                         if btn_tuple is None:
                             continue
-                        btn_frame, btn_label = btn_tuple
+                        
+                        # Handle both old (2-tuple) and new (4-tuple) formats
+                        if len(btn_tuple) == 2:
+                            btn_frame, btn_label = btn_tuple
+                            inner_frame = None
+                            points_label = None
+                        else:
+                            btn_frame, btn_label, inner_frame, points_label = btn_tuple
+                        
                         if btn_frame and btn_frame.winfo_exists():
                             btn_frame.configure(width=btn_w, height=btn_h)
                         if btn_label and btn_label.winfo_exists():
-                            current_text = btn_label.cget("text")
-                            if current_text.isdigit() or current_text == "":
-                                btn_label.configure(font=self.app.fonts["tile"])
-                            elif current_text in ["✓", "✗"]:
-                                symbol_font = font.Font(family="Arial",
-                                                        size=int(tile_size * 1.2),
-                                                        weight="bold")
-                                btn_label.configure(font=symbol_font)
+                            # Check if we have a tile image for this index
+                            if idx in self.tile_images and idx not in self.used_tiles:
+                                try:
+                                    # Resize image to fit the button
+                                    img = self.tile_images[idx].copy()
+                                    # Calculate size maintaining aspect ratio
+                                    img_w, img_h = img.size
+                                    aspect = img_w / img_h
+                                    
+                                    # Leave space for points text below image
+                                    points_height = 20  # Approximate height for points text
+                                    target_w = btn_w - 10
+                                    target_h = btn_h - points_height - 15  # Extra padding
+                                    
+                                    if target_w / target_h > aspect:
+                                        # Height constrained
+                                        new_h = target_h
+                                        new_w = int(new_h * aspect)
+                                    else:
+                                        # Width constrained
+                                        new_w = target_w
+                                        new_h = int(new_w / aspect)
+                                    
+                                    img = img.resize((new_w, new_h), Image.Resampling.LANCZOS)
+                                    photo = ImageTk.PhotoImage(img)
+                                    btn_label.configure(image=photo, text="")
+                                    btn_label.image = photo  # Keep a reference
+                                    
+                                    # Update points label font
+                                    if points_label and points_label.winfo_exists():
+                                        points_font_size = max(8, int(tile_size * 0.7))
+                                        points_font = font.Font(family="Arial", size=points_font_size, weight="bold")
+                                        points_label.configure(font=points_font)
+                                except Exception as e:
+                                    print(f"Error resizing tile image: {e}")
+                                    # Fallback to text
+                                    btn_label.configure(image="", text=str(self.app.questions[idx]["points"]), font=self.app.fonts["tile"])
+                            else:
+                                current_text = btn_label.cget("text")
+                                if current_text.isdigit() or current_text == "":
+                                    btn_label.configure(font=self.app.fonts["tile"])
+                                elif current_text in ["✓", "✗"]:
+                                    symbol_font = font.Font(family="Arial",
+                                                            size=int(tile_size * 1.2),
+                                                            weight="bold")
+                                    btn_label.configure(font=symbol_font)
 
         # Scale score fonts
         score_font_size = self.app._get_font_size(self.active_widgets.get('base_score_font_size', 14))
@@ -676,7 +774,7 @@ class QuizGame:
 
     def show_team_setup(self, saved_names: list[str] = None):
         """Display the team setup screen, optionally pre‑populating with saved_names."""
-        # if coming from “Play Again”, remember that list
+        # if coming from "Play Again", remember that list
         if saved_names is not None:
             self.saved_team_names = saved_names
         else:
@@ -708,7 +806,7 @@ class QuizGame:
         self.resize_active_frame()
 
     def start_game(self, teams: list[str]):
-        """Start the game with given team names, and stash them for “Play Again”."""
+        """Start the game with given team names, and stash them for "Play Again"."""
         self.saved_team_names = list(teams)
 
         self.clear_root()
@@ -739,19 +837,149 @@ class QuizGame:
         btn_tuple = self.active_frame.active_widgets['buttons'][row][col]
         if not btn_tuple:
             return
-        btn_frame, btn_label = btn_tuple
+        
+        # Handle both old and new tuple formats
+        if len(btn_tuple) == 2:
+            btn_frame, btn_label = btn_tuple
+        else:
+            btn_frame, btn_label, inner_frame, points_label = btn_tuple
 
         # Toplevel question window (autosizing)
         question_window = tk.Toplevel(self.root)
         question_window.title("Question")
         question_window.configure(bg=self.bg_color)
-        # ALLOW true resize (don't restrict)
         question_window.resizable(True, True)
+        question_window.minsize(400, 300)
+
+        # Container frame for better layout control
+        content_frame = tk.Frame(question_window, bg=self.bg_color)
+        content_frame.pack(pady=20, padx=20, fill=tk.BOTH, expand=True)
+
+        # Check if there's a question image
+        question_image_data = question_data.get("question_image", "")
+        img_label = None
+        original_img = None
+        
+        if question_image_data:
+            # Handle both string and dict formats
+            if isinstance(question_image_data, dict):
+                image_str = question_image_data.get("data", "")
+            else:
+                image_str = question_image_data
+            
+            if image_str:
+                try:
+                    # Convert base64 to image
+                    img_data = base64.b64decode(image_str)
+                    original_img = Image.open(io.BytesIO(img_data))
+                    
+                    # Create image label with frame
+                    img_frame = tk.Frame(content_frame, bg=self.bg_color)
+                    img_frame.pack(pady=(0, 10), fill=tk.BOTH, expand=True)
+                    
+                    img_label = tk.Label(img_frame, bg=self.bg_color, cursor="hand2")
+                    img_label.pack(expand=True)
+                    
+                    # Add click hint
+                    hint_label = tk.Label(img_frame, text="Click image to enlarge", 
+                                         font=("Arial", 10), fg="#888888", bg=self.bg_color)
+                    hint_label.pack()
+                    
+                    # Function to resize image
+                    def resize_image():
+                        if not img_label or not img_label.winfo_exists():
+                            return
+                        
+                        # Get available space
+                        available_width = img_frame.winfo_width()
+                        available_height = img_frame.winfo_height() - 30  # Account for hint text
+                        
+                        if available_width <= 1 or available_height <= 1:
+                            return
+                        
+                        # Calculate size maintaining aspect ratio
+                        img_w, img_h = original_img.size
+                        aspect = img_w / img_h
+                        
+                        # Maximum size constraints
+                        max_width = min(available_width - 20, 600)
+                        max_height = min(available_height - 20, 400)
+                        
+                        if max_width / max_height > aspect:
+                            # Height constrained
+                            new_h = max_height
+                            new_w = int(new_h * aspect)
+                        else:
+                            # Width constrained
+                            new_w = max_width
+                            new_h = int(new_w / aspect)
+                        
+                        # Resize and display
+                        resized = original_img.resize((new_w, new_h), Image.Resampling.LANCZOS)
+                        photo = ImageTk.PhotoImage(resized)
+                        img_label.configure(image=photo)
+                        img_label.image = photo
+                    
+                    # Function to show enlarged image
+                    def show_enlarged_image(event=None):
+                        enlarge_window = tk.Toplevel(question_window)
+                        enlarge_window.title("Enlarged Image")
+                        enlarge_window.configure(bg=self.bg_color)
+                        enlarge_window.transient(question_window)
+                        
+                        # Get screen dimensions
+                        screen_width = enlarge_window.winfo_screenwidth()
+                        screen_height = enlarge_window.winfo_screenheight()
+                        
+                        # Calculate size (90% of screen, maintaining aspect ratio)
+                        img_w, img_h = original_img.size
+                        aspect = img_w / img_h
+                        
+                        max_width = int(screen_width * 0.9)
+                        max_height = int(screen_height * 0.9)
+                        
+                        if max_width / max_height > aspect:
+                            new_h = max_height
+                            new_w = int(new_h * aspect)
+                        else:
+                            new_w = max_width
+                            new_h = int(new_w / aspect)
+                        
+                        # Resize and display
+                        enlarged = original_img.resize((new_w, new_h), Image.Resampling.LANCZOS)
+                        photo = ImageTk.PhotoImage(enlarged)
+                        
+                        enlarged_label = tk.Label(enlarge_window, image=photo, bg=self.bg_color)
+                        enlarged_label.image = photo
+                        enlarged_label.pack(padx=10, pady=10)
+                        
+                        # Center the window
+                        enlarge_window.update_idletasks()
+                        x = (screen_width - enlarge_window.winfo_width()) // 2
+                        y = (screen_height - enlarge_window.winfo_height()) // 2
+                        enlarge_window.geometry(f"+{x}+{y}")
+                        
+                        # Close on click
+                        enlarged_label.bind("<Button-1>", lambda e: enlarge_window.destroy())
+                        enlarge_window.bind("<Escape>", lambda e: enlarge_window.destroy())
+                    
+                    # Bind click event
+                    img_label.bind("<Button-1>", show_enlarged_image)
+                    
+                    # Initial resize
+                    question_window.update_idletasks()
+                    resize_image()
+                    
+                    # Bind resize event
+                    question_window.bind("<Configure>", lambda e: resize_image())
+                    
+                except Exception as e:
+                    print(f"Error loading question image: {e}")
 
         # Main question label (wrap at 500px for wider text)
         max_wrap = 500
         qlabel = tk.Label(
-            question_window,
+            content_frame,
             text=question_data["question"],
             font=("Arial", 16),
             bg=self.bg_color,
@@ -759,7 +987,7 @@ class QuizGame:
             wraplength=max_wrap,
             justify="center",
         )
-        qlabel.pack(pady=20, padx=20, expand=True, fill=tk.BOTH)
+        qlabel.pack(pady=10)
         question_window.update_idletasks()
 
         def mark_correct():
@@ -767,7 +995,11 @@ class QuizGame:
             self.teams[self.current_team] += question_data["points"]
             self.update_scores()
             btn_frame.configure(bg="#4CAF50")  # Green
-            btn_label.configure(bg="#4CAF50", text="✓")
+            btn_label.configure(bg="#4CAF50", text="✓", image="")
+            if len(btn_tuple) > 2:
+                inner_frame.configure(bg="#4CAF50")
+                if points_label:
+                    points_label.configure(bg="#4CAF50", text="")
             question_window.destroy()
             self.next_team()
             if len(self.active_frame.used_tiles) == len(self.questions):
@@ -776,7 +1008,11 @@ class QuizGame:
         def mark_wrong():
             self.active_frame.used_tiles.add(idx)
             btn_frame.configure(bg="#F44336")  # Red
-            btn_label.configure(bg="#F44336", text="✗")
+            btn_label.configure(bg="#F44336", text="✗", image="")
+            if len(btn_tuple) > 2:
+                inner_frame.configure(bg="#F44336")
+                if points_label:
+                    points_label.configure(bg="#F44336", text="")
             question_window.destroy()
             self.next_team()
             if len(self.active_frame.used_tiles) == len(self.questions):
@@ -790,7 +1026,7 @@ class QuizGame:
 
             # Add the answer label (wrap at same width)
             answer_label = tk.Label(
-                question_window,
+                content_frame,
                 text=f"Answer: {question_data['answer']}",
                 font=("Arial", 14, "bold"),
                 fg="#2196F3",
@@ -798,12 +1034,12 @@ class QuizGame:
                 wraplength=max_wrap,
                 justify="center",
             )
-            answer_label.pack(pady=10, padx=20, fill=tk.BOTH)
+            answer_label.pack(pady=10)
             question_window.update_idletasks()
 
             # Action buttons frame for correct/wrong
-            action_frame = tk.Frame(question_window, bg=self.bg_color)
-            action_frame.pack(pady=10, fill=tk.X, expand=True)
+            action_frame = tk.Frame(content_frame, bg=self.bg_color)
+            action_frame.pack(pady=10, fill=tk.X)
 
             # Correct button
             correct_frame = tk.Frame(action_frame, bg="#4CAF50", width=120, height=40)
@@ -844,7 +1080,7 @@ class QuizGame:
             question_window.minsize(win_w, win_h)
 
         # "Reveal Answer" button
-        reveal_frame = tk.Frame(question_window, bg="#2196F3", width=150, height=40)
+        reveal_frame = tk.Frame(content_frame, bg="#2196F3", width=150, height=40)
         reveal_frame.pack(pady=10)
         reveal_frame.pack_propagate(False)
         reveal_label = tk.Label(
@@ -1032,9 +1268,32 @@ class QuizGame:
                 for j in range(len(self.active_frame.active_widgets['buttons'][i])):
                     idx = i * self.grid_cols + j
                     if idx < len(self.questions):
-                        btn_frame, btn_label = self.active_frame.active_widgets['buttons'][i][j]
+                        btn_tuple = self.active_frame.active_widgets['buttons'][i][j]
+                        if not btn_tuple:
+                            continue
+                        
+                        # Handle both old and new tuple formats
+                        if len(btn_tuple) == 2:
+                            btn_frame, btn_label = btn_tuple
+                            inner_frame = None
+                            points_label = None
+                        else:
+                            btn_frame, btn_label, inner_frame, points_label = btn_tuple
+                        
                         btn_frame.configure(bg=self.button_color)
-                        btn_label.configure(bg=self.button_color, text=str(self.questions[idx]["points"]))
+                        if inner_frame:
+                            inner_frame.configure(bg=self.button_color)
+                        
+                        # Reset button to show either tile image or points
+                        if idx in self.active_frame.tile_images:
+                            # Trigger resize to redraw the image
+                            self.active_frame.resize()
+                        else:
+                            btn_label.configure(bg=self.button_color, text=str(self.questions[idx]["points"]), image="")
+                        
+                        # Restore points label if it exists
+                        if points_label:
+                            points_label.configure(bg=self.button_color, text=str(self.questions[idx]["points"]), fg="white")
 
         self.update_scores()
         if self.teams:
