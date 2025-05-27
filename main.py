@@ -1,15 +1,13 @@
 import tkinter as tk
 from tkinter import messagebox, font
 from PIL import Image, ImageTk
-import io
-import base64
+import io, base64
 
 # Import the QuestionSetManager class from question_set_manager.py
 from question_set_manager import QuestionSetManager, QuestionSet
 
 # Default teams (will be customized by the user)
 DEFAULT_TEAMS = ["Team 1", "Team 2", "Team 3"]
-
 
 class MainMenuFrame(tk.Frame):
     """Frame subclass for the Main Menu screen."""
@@ -484,8 +482,8 @@ class GameBoardFrame(tk.Frame):
                     continue
 
                 btn_frame = tk.Frame(board_frame, bg=self.app.button_color,
-                                     highlightbackground="black",
-                                     highlightthickness=1)
+                                    highlightbackground="black",
+                                    highlightthickness=1)
                 btn_frame.grid(row=i, column=j, padx=5, pady=5, sticky="nsew")
                 btn_frame.grid_propagate(False)
 
@@ -497,6 +495,7 @@ class GameBoardFrame(tk.Frame):
                 # Create inner frame for image and points
                 inner_frame = tk.Frame(btn_frame, bg=self.app.button_color)
                 inner_frame.pack(expand=True, fill=tk.BOTH, padx=2, pady=2)
+                inner_frame.pack_propagate(False)  # IMPORTANT: Prevent inner frame from expanding
                 
                 if tile_image_data:
                     # Handle both string and dict formats
@@ -510,17 +509,22 @@ class GameBoardFrame(tk.Frame):
                             # Convert base64 to image
                             img_data = base64.b64decode(image_str)
                             img = Image.open(io.BytesIO(img_data))
-                            # We'll resize this properly in the resize() method
+                            # Store original image for later resizing
                             self.tile_images[idx] = img
                             
-                            # Create label for image
-                            btn_label = tk.Label(inner_frame, bg=self.app.button_color, compound="top")
+                            # Create container frame for vertical layout
+                            content_frame = tk.Frame(inner_frame, bg=self.app.button_color)
+                            content_frame.pack(expand=True, fill=tk.BOTH)
+                            content_frame.pack_propagate(False)
+                            
+                            # Create label for image (will be sized in resize method)
+                            btn_label = tk.Label(content_frame, bg=self.app.button_color)
                             btn_label.pack(expand=True, fill=tk.BOTH)
                             
                             # Create label for points below image
-                            points_label = tk.Label(inner_frame, text=str(question["points"]),
-                                                   bg=self.app.button_color, fg="white")
-                            points_label.pack(side=tk.BOTTOM)
+                            points_label = tk.Label(content_frame, text=str(question["points"]),
+                                                bg=self.app.button_color, fg="white")
+                            points_label.pack(side=tk.BOTTOM, pady=(0, 2))
                         except Exception as e:
                             print(f"Error loading tile image for question {idx}: {e}")
                             # Fallback to text only
@@ -535,14 +539,18 @@ class GameBoardFrame(tk.Frame):
                 else:
                     # No tile image, show points
                     btn_label = tk.Label(inner_frame, text=str(question["points"]),
-                                         bg=self.app.button_color, fg="white")
+                                        bg=self.app.button_color, fg="white")
                     btn_label.pack(expand=True, fill=tk.BOTH)
 
+                # Bind click events to all elements
                 btn_frame.bind("<Button-1>", lambda _event, i=idx: self.app.reveal_question(i))
                 btn_label.bind("<Button-1>", lambda _event, i=idx: self.app.reveal_question(i))
                 inner_frame.bind("<Button-1>", lambda _event, i=idx: self.app.reveal_question(i))
                 if points_label:
                     points_label.bind("<Button-1>", lambda _event, i=idx: self.app.reveal_question(i))
+                # Bind to content_frame if it exists
+                if 'content_frame' in locals():
+                    content_frame.bind("<Button-1>", lambda _event, i=idx: self.app.reveal_question(i))
 
                 row_widgets.append((btn_frame, btn_label, inner_frame, points_label))
             self.active_widgets['buttons'].append(row_widgets)
@@ -624,34 +632,47 @@ class GameBoardFrame(tk.Frame):
                                     img_w, img_h = img.size
                                     aspect = img_w / img_h
                                     
+                                    # Calculate points label height
+                                    points_font_size = max(8, int(tile_size * 0.7))
+                                    points_height = points_font_size + 8  # Font size + padding
+                                    
                                     # Leave space for points text below image
-                                    points_height = 20  # Approximate height for points text
                                     target_w = btn_w - 10
-                                    target_h = btn_h - points_height - 15  # Extra padding
+                                    target_h = btn_h - points_height - 10  # Subtract points area and padding
                                     
-                                    if target_w / target_h > aspect:
-                                        # Height constrained
-                                        new_h = target_h
-                                        new_w = int(new_h * aspect)
+                                    # Ensure we have positive dimensions
+                                    if target_w > 0 and target_h > 0:
+                                        if target_w / target_h > aspect:
+                                            # Height constrained
+                                            new_h = target_h
+                                            new_w = int(new_h * aspect)
+                                        else:
+                                            # Width constrained
+                                            new_w = target_w
+                                            new_h = int(new_w / aspect)
+                                        
+                                        # Ensure image doesn't exceed target dimensions
+                                        new_w = min(new_w, target_w)
+                                        new_h = min(new_h, target_h)
+                                        
+                                        img = img.resize((new_w, new_h), Image.Resampling.LANCZOS)
+                                        photo = ImageTk.PhotoImage(img)
+                                        btn_label.configure(image=photo, text="")
+                                        btn_label.image = photo  # Keep a reference
                                     else:
-                                        # Width constrained
-                                        new_w = target_w
-                                        new_h = int(new_w / aspect)
-                                    
-                                    img = img.resize((new_w, new_h), Image.Resampling.LANCZOS)
-                                    photo = ImageTk.PhotoImage(img)
-                                    btn_label.configure(image=photo, text="")
-                                    btn_label.image = photo  # Keep a reference
+                                        # Tile too small for image, just show points
+                                        btn_label.configure(image="", text="")
                                     
                                     # Update points label font
                                     if points_label and points_label.winfo_exists():
-                                        points_font_size = max(8, int(tile_size * 0.7))
                                         points_font = font.Font(family="Arial", size=points_font_size, weight="bold")
                                         points_label.configure(font=points_font)
                                 except Exception as e:
                                     print(f"Error resizing tile image: {e}")
                                     # Fallback to text
                                     btn_label.configure(image="", text=str(self.app.questions[idx]["points"]), font=self.app.fonts["tile"])
+                                    if points_label:
+                                        points_label.pack_forget()
                             else:
                                 current_text = btn_label.cget("text")
                                 if current_text.isdigit() or current_text == "":
