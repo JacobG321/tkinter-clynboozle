@@ -11,7 +11,7 @@ class QuestionSet:
         self.name = name
         self.questions = questions or []
 
-    def add_question(self, question, answer, points, tile_image="", question_image=""):
+    def add_question(self, question, answer, points, tile_image="", question_image="", question_audio=""):
         """Add a new question to the set"""
         self.questions.append(
             {
@@ -20,6 +20,7 @@ class QuestionSet:
                 "points": points,
                 "tile_image": tile_image,
                 "question_image": question_image,
+                "question_audio": question_audio,
             }
         )
 
@@ -29,7 +30,7 @@ class QuestionSet:
             del self.questions[index]
 
     def update_question(
-        self, index, question, answer, points, tile_image="", question_image=""
+        self, index, question, answer, points, tile_image="", question_image="", question_audio=""
     ):
         """Update an existing question"""
         if 0 <= index < len(self.questions):
@@ -39,6 +40,7 @@ class QuestionSet:
                 "points": points,
                 "tile_image": tile_image,
                 "question_image": question_image,
+                "question_audio": question_audio,
             }
 
     def to_dict(self):
@@ -592,6 +594,30 @@ class QuestionSetManager:
                 print(f"Error loading image: {e}")
                 return None
 
+        def load_audio(file_path):
+            """
+            Load an audio file and convert to base64 for storage.
+            Returns a dict with the base64 data and filename.
+            """
+            if not file_path:
+                return None
+
+            try:
+                with open(file_path, "rb") as f:
+                    audio_data = f.read()
+                
+                audio_b64 = base64.b64encode(audio_data).decode("utf-8")
+                
+                return {
+                    "path": file_path,
+                    "filename": os.path.basename(file_path),
+                    "data": audio_b64,
+                }
+
+            except Exception as e:
+                print(f"Error loading audio: {e}")
+                return None
+
 
         def base64_to_image(b64_str, max_size=(240, 160), filename=""):
             """
@@ -624,24 +650,49 @@ class QuestionSetManager:
 
         # Dialog to edit a question
         def edit_question_dialog(
-            title, question="", answer="", points=10, tile_image="", question_image=""
+            title, question="", answer="", points=10, tile_image="", question_image="", question_audio=""
         ):
             dialog = tk.Toplevel(manager_window)
             dialog.title(title)
-            dialog.geometry("700x700")
+            dialog.geometry("900x800")  # Made larger
             dialog.configure(bg=bg_color)
             dialog.transient(manager_window)
             dialog.grab_set()
             dialog.focus_set()
             center_window_on_parent(dialog, manager_window)
 
-            # Configure grid
-            dialog.columnconfigure(0, weight=0)
-            dialog.columnconfigure(1, weight=1)
+            # Create a canvas and scrollbar for scrolling
+            canvas = tk.Canvas(dialog, bg=bg_color, highlightthickness=0)
+            scrollbar = tk.Scrollbar(dialog, orient="vertical", command=canvas.yview)
+            scrollable_frame = tk.Frame(canvas, bg=bg_color)
+
+            scrollable_frame.bind(
+                "<Configure>",
+                lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+            )
+
+            canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+            canvas.configure(yscrollcommand=scrollbar.set)
+
+            # Add mouse wheel scrolling
+            def _on_mousewheel(event):
+                canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+            
+            # Bind mouse wheel for different platforms
+            canvas.bind("<MouseWheel>", _on_mousewheel)  # Windows
+            canvas.bind("<Button-4>", lambda event: canvas.yview_scroll(-1, "units"))  # Linux
+            canvas.bind("<Button-5>", lambda event: canvas.yview_scroll(1, "units"))   # Linux
+
+            canvas.pack(side="left", fill="both", expand=True, padx=10, pady=10)
+            scrollbar.pack(side="right", fill="y")
+
+            # Configure grid for scrollable_frame instead of dialog
+            scrollable_frame.columnconfigure(0, weight=0)
+            scrollable_frame.columnconfigure(1, weight=1)
 
             # --- Question text ---
             tk.Label(
-                dialog,
+                scrollable_frame,
                 text="Question:",
                 font=("Arial", 12),
                 bg=bg_color,
@@ -649,7 +700,7 @@ class QuestionSetManager:
                 anchor="e",
             ).grid(row=0, column=0, sticky="e", padx=10, pady=10)
             question_frame = tk.Frame(
-                dialog, bg="white", highlightbackground="#999", highlightthickness=1
+                scrollable_frame, bg="white", highlightbackground="#999", highlightthickness=1
             )
             question_frame.grid(row=0, column=1, sticky="ew", padx=10, pady=10)
             question_text = tk.Text(
@@ -666,7 +717,7 @@ class QuestionSetManager:
 
             # --- Answer entry ---
             tk.Label(
-                dialog,
+                scrollable_frame,
                 text="Answer:",
                 font=("Arial", 12),
                 bg=bg_color,
@@ -675,7 +726,7 @@ class QuestionSetManager:
             ).grid(row=1, column=0, sticky="e", padx=10, pady=10)
             answer_var = tk.StringVar(value=answer)
             answer_frame = tk.Frame(
-                dialog,
+                scrollable_frame,
                 bg="white",
                 highlightbackground="#999",
                 highlightthickness=1,
@@ -694,14 +745,14 @@ class QuestionSetManager:
 
             # --- Points combobox ---
             tk.Label(
-                dialog,
+                scrollable_frame,
                 text="Points:",
                 font=("Arial", 12),
                 bg=bg_color,
                 fg="white",
                 anchor="e",
             ).grid(row=2, column=0, sticky="e", padx=10, pady=10)
-            points_frame = tk.Frame(dialog, bg=bg_color)
+            points_frame = tk.Frame(scrollable_frame, bg=bg_color)
             points_frame.grid(row=2, column=1, sticky="w", padx=10, pady=10)
             point_values = [5, 10, 15, 20, 25, 30, 50, 100]
             points_var = tk.StringVar(value=str(points))
@@ -727,16 +778,23 @@ class QuestionSetManager:
             elif isinstance(question_image, str) and question_image:
                 image_data["question_image"] = {"data": question_image, "filename": ""}
 
+            # --- Audio data storage & pre-load ---
+            audio_data = {"question_audio": None}
+            if isinstance(question_audio, dict) and question_audio.get("data"):
+                audio_data["question_audio"] = question_audio
+            elif isinstance(question_audio, str) and question_audio:
+                audio_data["question_audio"] = {"data": question_audio, "filename": ""}
+
             # --- Tile Image selector & preview ---
             tk.Label(
-                dialog,
+                scrollable_frame,
                 text="Tile Image:",
                 font=("Arial", 12),
                 bg=bg_color,
                 fg="white",
                 anchor="e",
             ).grid(row=3, column=0, sticky="e", padx=10, pady=10)
-            tile_img_frame = tk.Frame(dialog, bg=bg_color)
+            tile_img_frame = tk.Frame(scrollable_frame, bg=bg_color)
             tile_img_frame.grid(row=3, column=1, sticky="w", padx=10, pady=10)
             tile_preview_frame = tk.Frame(tile_img_frame, bg="#444")
             tile_preview_frame.grid(
@@ -789,14 +847,14 @@ class QuestionSetManager:
 
             # --- Question Image selector & preview ---
             tk.Label(
-                dialog,
+                scrollable_frame,
                 text="Question Image:",
                 font=("Arial", 12),
                 bg=bg_color,
                 fg="white",
                 anchor="e",
             ).grid(row=4, column=0, sticky="e", padx=10, pady=10)
-            q_img_frame = tk.Frame(dialog, bg=bg_color)
+            q_img_frame = tk.Frame(scrollable_frame, bg=bg_color)
             q_img_frame.grid(row=4, column=1, sticky="w", padx=10, pady=10)
             q_preview_frame = tk.Frame(q_img_frame, bg="#444")
             q_preview_frame.grid(row=0, column=0, rowspan=3, sticky="w", padx=(0, 10))
@@ -845,6 +903,71 @@ class QuestionSetManager:
                 ),
             ).grid(row=1, column=1, sticky="w")
 
+            # --- Question Audio selector & preview ---
+            tk.Label(
+                scrollable_frame,
+                text="Question Audio:",
+                font=("Arial", 12),
+                bg=bg_color,
+                fg="white",
+                anchor="e",
+            ).grid(row=5, column=0, sticky="e", padx=10, pady=10)
+            audio_frame = tk.Frame(scrollable_frame, bg=bg_color)
+            audio_frame.grid(row=5, column=1, sticky="w", padx=10, pady=10)
+            
+            audio_info_frame = tk.Frame(audio_frame, bg="#444")
+            audio_info_frame.grid(row=0, column=0, rowspan=3, sticky="w", padx=(0, 10))
+            audio_info_label = tk.Label(audio_info_frame, bg="#444", text="No Audio", fg="white")
+            audio_info_label.pack(padx=5, pady=5)
+            audio_filename_var = tk.StringVar(value="")
+            tk.Label(
+                audio_info_frame,
+                textvariable=audio_filename_var,
+                bg="#444",
+                fg="white",
+                wraplength=280,
+                font=("Arial", 9),
+            ).pack(padx=5, pady=(0, 5))
+
+            def browse_question_audio():
+                path = filedialog.askopenfilename(
+                    title="Select Question Audio",
+                    filetypes=[
+                        ("Audio Files", "*.wav *.mp3 *.ogg *.flac *.aac"),
+                        ("All Files", "*.*"),
+                    ],
+                )
+                if not path:
+                    return
+                audio = load_audio(path)
+                if audio:
+                    audio_data["question_audio"] = audio
+                    audio_info_label.configure(text="Audio File")
+                    audio_filename_var.set(f"File: {audio['filename']}")
+                else:
+                    audio_info_label.configure(text="Load Error")
+                    audio_filename_var.set("")
+
+            tk.Button(
+                audio_frame, text="Select Audio", command=browse_question_audio
+            ).grid(row=0, column=1, sticky="w")
+            tk.Button(
+                audio_frame,
+                text="Clear Audio",
+                command=lambda: (
+                    audio_info_label.configure(text="No Audio"),
+                    audio_data.update({"question_audio": None}),
+                    audio_filename_var.set(""),
+                ),
+            ).grid(row=1, column=1, sticky="w")
+
+            # Show existing audio if present
+            if audio_data["question_audio"] and audio_data["question_audio"].get("data"):
+                audio_info_label.configure(text="Audio File")
+                fn = audio_data["question_audio"].get("filename", "")
+                if fn:
+                    audio_filename_var.set(f"File: {fn}")
+
             # --- If we started with existing base64, show it now ---
             if image_data["tile_image"] and image_data["tile_image"].get("data"):
                 img = base64_to_image(image_data["tile_image"]["data"])
@@ -867,8 +990,8 @@ class QuestionSetManager:
                         q_filename_var.set(f"File: {fn}")
 
             # --- Dialog buttons ---
-            button_frame = tk.Frame(dialog, bg=bg_color)
-            button_frame.grid(row=5, column=0, columnspan=2, pady=20)
+            button_frame = tk.Frame(scrollable_frame, bg=bg_color)
+            button_frame.grid(row=6, column=0, columnspan=2, pady=20)
 
             result = {"value": None}
 
@@ -903,6 +1026,7 @@ class QuestionSetManager:
                     "points": p,
                     "tile_image": pack(image_data["tile_image"]),
                     "question_image": pack(image_data["question_image"]),
+                    "question_audio": pack(audio_data["question_audio"]),
                 }
                 dialog.destroy()
 
@@ -965,6 +1089,7 @@ class QuestionSetManager:
                     result["points"],
                     result.get("tile_image", ""),
                     result.get("question_image", ""),
+                    result.get("question_audio", ""),
                 )
                 update_questions_view(q_set)
 
@@ -994,6 +1119,7 @@ class QuestionSetManager:
                 current_q["points"],
                 current_q.get("tile_image", ""),
                 current_q.get("question_image", ""),
+                current_q.get("question_audio", ""),
             )
 
             if result:
@@ -1005,6 +1131,7 @@ class QuestionSetManager:
                     result["points"],
                     result.get("tile_image", ""),
                     result.get("question_image", ""),
+                    result.get("question_audio", ""),
                 )
                 update_questions_view(q_set)
 

@@ -1,7 +1,13 @@
 import tkinter as tk
-from tkinter import messagebox, font
+from tkinter import messagebox, font, ttk
 from PIL import Image, ImageTk
 import io, base64
+import tempfile
+import os
+import subprocess
+import threading
+import time
+import pygame
 
 # Import the QuestionSetManager class from question_set_manager.py
 from question_set_manager import QuestionSetManager, QuestionSet
@@ -767,6 +773,19 @@ class QuizGame:
         # Bind the configure event
         self.root.bind("<Configure>", self.handle_resize)
 
+        # Initialize pygame mixer for audio playback
+        try:
+            pygame.mixer.init(frequency=22050, size=-16, channels=2, buffer=512)
+            self._audio_initialized = True
+            self._current_audio_sound = None
+            self._audio_position = 0.0
+            self._audio_length = 0.0
+            self._is_playing = False
+            self._position_update_thread = None
+        except Exception as e:
+            print(f"Warning: Failed to initialize pygame audio: {e}")
+            self._audio_initialized = False
+
         # Show main menu
         self.show_main_menu()
 
@@ -789,6 +808,20 @@ class QuizGame:
                     q["_question_pil"] = None
             else:
                 q["_question_pil"] = None
+
+            # Process audio data
+            qaudio = q.get("question_audio", "")
+            if isinstance(qaudio, dict) and qaudio.get("data"):
+                try:
+                    raw_audio = base64.b64decode(qaudio["data"])
+                    q["_question_audio"] = raw_audio   # stash the raw audio data
+                    q["_audio_filename"] = qaudio.get("filename", "audio.wav")
+                except Exception:
+                    q["_question_audio"] = None
+                    q["_audio_filename"] = None
+            else:
+                q["_question_audio"] = None
+                q["_audio_filename"] = None
 
 
     def clear_root(self):
@@ -974,6 +1007,229 @@ class QuizGame:
 
             img_label.bind("<Button-1>", show_enlarged)
 
+        # --- Audio controls with pygame ---
+        # --- Audio controls with pygame.music (supports seeking) ---
+        audio_data = question_data.get("_question_audio", None)
+        if audio_data and self._audio_initialized:
+            audio_frame = tk.Frame(content_frame, bg=self.bg_color)
+            audio_frame.pack(pady=10, fill=tk.X)
+
+            # Audio info
+            audio_filename = question_data.get("_audio_filename", "Unknown")
+            audio_info = tk.Label(
+                audio_frame,
+                text=f"Audio: {audio_filename}",
+                font=("Arial", 12),
+                bg=self.bg_color,
+                fg="#888888"
+            )
+            audio_info.pack(pady=(0, 5))
+
+            # Create temporary file for pygame
+            temp_audio_file = None
+            try:
+                # Dump raw audio to a temp file
+                audio_ext = os.path.splitext(audio_filename)[1] or '.wav'
+                temp_audio_file = tempfile.NamedTemporaryFile(delete=False, suffix=audio_ext)
+                temp_audio_file.write(audio_data)
+                temp_audio_file.close()
+
+                # Load with pygame.music instead of Sound
+                pygame.mixer.music.load(temp_audio_file.name)
+                
+                # Get duration (approximate for pygame.music)
+                temp_sound = pygame.mixer.Sound(temp_audio_file.name)
+                sound_length = temp_sound.get_length()
+                del temp_sound  # Free the Sound object
+
+                # Controls container
+                audio_controls = tk.Frame(audio_frame, bg=self.bg_color)
+                audio_controls.pack(pady=(0, 10))
+
+                # State
+                audio_state = {
+                    'is_playing': False,
+                    'is_paused': False,
+                    'position': 0.0,
+                    'update_job': None,
+                    'user_dragging': False,
+                    'was_playing_before_drag': False
+                }
+
+                # Time & slider frame
+                position_frame = tk.Frame(audio_frame, bg=self.bg_color)
+                position_frame.pack(fill=tk.X, pady=(0, 5))
+
+                time_label = tk.Label(
+                    position_frame,
+                    text="00:00 / 00:00",
+                    font=("Arial", 10),
+                    bg=self.bg_color,
+                    fg="#888888"
+                )
+                time_label.pack()
+
+                position_slider = ttk.Scale(
+                    position_frame,
+                    from_=0,
+                    to=sound_length,
+                    orient=tk.HORIZONTAL,
+                    length=300
+                )
+                position_slider.pack(fill=tk.X, padx=20, pady=5)
+
+                slider_help = tk.Label(
+                    position_frame,
+                    text="Drag slider to seek position",
+                    font=("Arial", 8),
+                    bg=self.bg_color,
+                    fg="#666666"
+                )
+                slider_help.pack(pady=(0, 5))
+
+                def format_time(sec):
+                    m = int(sec // 60)
+                    s = int(sec % 60)
+                    return f"{m:02d}:{s:02d}"
+
+                def get_current_position():
+                    if audio_state['is_playing'] and not audio_state['is_paused']:
+                        # pygame.music.get_pos() returns milliseconds since play started
+                        # This is not the actual position in the file!
+                        # We need to track position ourselves
+                        return audio_state['position']
+                    return audio_state['position']
+
+                def update_position():
+                    if not audio_state['is_playing'] or audio_state['is_paused']:
+                        return
+                    
+                    # Increment position (approximate)
+                    audio_state['position'] += 0.1
+                    
+                    if audio_state['position'] > sound_length:
+                        audio_state['position'] = sound_length
+                        stop_audio()
+                        return
+                    
+                    if not audio_state['user_dragging']:
+                        position_slider.set(audio_state['position'])
+                    
+                    time_label.configure(text=f"{format_time(audio_state['position'])} / {format_time(sound_length)}")
+                    audio_state['update_job'] = question_window.after(100, update_position)
+
+                def play_audio():
+                    if not audio_state['is_playing']:
+                        # Start playing
+                        if audio_state['position'] > 0:
+                            # Try to set position (only works for some formats)
+                            pygame.mixer.music.play(start=audio_state['position'])
+                        else:
+                            pygame.mixer.music.play()
+                        audio_state['is_playing'] = True
+                        audio_state['is_paused'] = False
+                        play_btn.configure(text="Pause")
+                        stop_btn.configure(state="normal")
+                        update_position()
+                    elif audio_state['is_paused']:
+                        # Resume
+                        pygame.mixer.music.unpause()
+                        audio_state['is_paused'] = False
+                        play_btn.configure(text="Pause")
+                        update_position()
+                    else:
+                        # Pause
+                        pygame.mixer.music.pause()
+                        audio_state['is_paused'] = True
+                        play_btn.configure(text="Resume")
+                        if audio_state['update_job']:
+                            question_window.after_cancel(audio_state['update_job'])
+                            audio_state['update_job'] = None
+
+                def stop_audio():
+                    pygame.mixer.music.stop()
+                    audio_state['is_playing'] = False
+                    audio_state['is_paused'] = False
+                    audio_state['position'] = 0.0
+                    position_slider.set(0.0)
+                    play_btn.configure(text="Play")
+                    stop_btn.configure(state="disabled")
+                    time_label.configure(text=f"00:00 / {format_time(sound_length)}")
+                    if audio_state['update_job']:
+                        question_window.after_cancel(audio_state['update_job'])
+                        audio_state['update_job'] = None
+
+                def on_slider_press(event):
+                    audio_state['user_dragging'] = True
+                    audio_state['was_playing_before_drag'] = audio_state['is_playing'] and not audio_state['is_paused']
+                    if audio_state['was_playing_before_drag']:
+                        pygame.mixer.music.pause()
+                        audio_state['is_paused'] = True
+
+                def on_slider_release(event):
+                    audio_state['user_dragging'] = False
+                    new_pos = position_slider.get()
+                    audio_state['position'] = new_pos
+                    time_label.configure(text=f"{format_time(new_pos)} / {format_time(sound_length)}")
+
+                    if audio_state['was_playing_before_drag']:
+                        # Stop and restart from position
+                        pygame.mixer.music.stop()
+                        try:
+                            # This only works for OGG and MP3 files
+                            pygame.mixer.music.load(temp_audio_file.name)
+                            pygame.mixer.music.play(start=new_pos)
+                        except:
+                            # Fallback: play from beginning
+                            pygame.mixer.music.play()
+                            audio_state['position'] = 0.0
+                        audio_state['is_playing'] = True
+                        audio_state['is_paused'] = False
+                        update_position()
+
+                def on_slider_change(val):
+                    if audio_state['user_dragging']:
+                        t = float(val)
+                        audio_state['position'] = t
+                        time_label.configure(text=f"{format_time(t)} / {format_time(sound_length)}")
+
+                # bindings
+                position_slider.configure(command=on_slider_change)
+                position_slider.bind("<ButtonPress-1>", on_slider_press)
+                position_slider.bind("<ButtonRelease-1>", on_slider_release)
+
+                # buttons
+                play_btn = tk.Button(audio_controls, text="Play", command=play_audio,
+                                    font=("Arial", 10), bg="white", fg="black",
+                                    relief="flat", padx=15, bd=0, highlightthickness=0)
+                play_btn.pack(side=tk.LEFT, padx=5)
+
+                stop_btn = tk.Button(audio_controls, text="Stop", command=stop_audio,
+                                    font=("Arial", 10), bg="white", fg="black",
+                                    relief="flat", padx=15, bd=0, highlightthickness=0,
+                                    state="disabled")
+                stop_btn.pack(side=tk.LEFT, padx=5)
+
+                # initial display
+                time_label.configure(text=f"00:00 / {format_time(sound_length)}")
+
+                def cleanup_audio():
+                    if audio_state['update_job']:
+                        question_window.after_cancel(audio_state['update_job'])
+                    pygame.mixer.music.stop()
+                    if temp_audio_file and os.path.exists(temp_audio_file.name):
+                        os.unlink(temp_audio_file.name)
+
+                question_window.protocol("WM_DELETE_WINDOW", lambda: (cleanup_audio(), question_window.destroy()))
+
+            except Exception as e:
+                print(f"Error setting up audio: {e}")
+                if temp_audio_file and os.path.exists(temp_audio_file.name):
+                    try:
+                        os.unlink(temp_audio_file.name)
+                    except:
+                        pass
+
         # --- Question text ---
         max_wrap = 500
         qlabel = tk.Label(
@@ -990,6 +1246,9 @@ class QuizGame:
 
         # --- Answer / scoring handlers ---
         def mark_correct():
+            # Stop any pygame audio
+            if self._audio_initialized:
+                pygame.mixer.stop()
             self.active_frame.used_tiles.add(idx)
             self.teams[self.current_team] += question_data["points"]
             self.update_scores()
@@ -1005,6 +1264,9 @@ class QuizGame:
                 self.show_game_over()
 
         def mark_wrong():
+            # Stop any pygame audio
+            if self._audio_initialized:
+                pygame.mixer.stop()
             self.active_frame.used_tiles.add(idx)
             btn_frame.configure(bg="#F44336")
             btn_label.configure(bg="#F44336", text="✗", image="")
