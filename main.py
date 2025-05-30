@@ -881,7 +881,13 @@ class QuizGame:
 
         self.active_frame = GameBoardFrame(self.root, self, self.teams)
         self.active_frame.grid(row=0, column=0, sticky="nsew")
+        
+        # Force proper layout and resize
+        self.root.update_idletasks()  # Ensure geometry is calculated
         self.resize_active_frame()
+        
+        # Do another resize after a short delay to ensure proper sizing
+        self.root.after(100, self.resize_active_frame)
 
     def reveal_question(self, idx):
         """Display a question when a tile is clicked (auto-sizing window to content)."""
@@ -1274,6 +1280,10 @@ class QuizGame:
             
             question_window.destroy()
             self.next_team()
+            
+            # Trigger resize to fix symbol size
+            self.resize_active_frame()
+            
             if len(self.active_frame.used_tiles) == len(self.questions):
                 self.show_game_over()
 
@@ -1307,6 +1317,10 @@ class QuizGame:
             
             question_window.destroy()
             self.next_team()
+            
+            # Trigger resize to fix symbol size
+            self.resize_active_frame()
+            
             if len(self.active_frame.used_tiles) == len(self.questions):
                 self.show_game_over()
 
