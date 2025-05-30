@@ -4,9 +4,6 @@ from PIL import Image, ImageTk
 import io, base64
 import tempfile
 import os
-import subprocess
-import threading
-import time
 import pygame
 
 # Import the QuestionSetManager class from question_set_manager.py
@@ -1248,16 +1245,33 @@ class QuizGame:
         def mark_correct():
             # Stop any pygame audio
             if self._audio_initialized:
-                pygame.mixer.stop()
+                pygame.mixer.music.stop()
             self.active_frame.used_tiles.add(idx)
             self.teams[self.current_team] += question_data["points"]
             self.update_scores()
+            
+            # Update the tile appearance
             btn_frame.configure(bg="#4CAF50")
-            btn_label.configure(bg="#4CAF50", text="✓", image="")
+            
+            # Clear the current content and recreate for symbol display
             if inner_frame:
+                # Clear all existing content in inner_frame
+                for widget in inner_frame.winfo_children():
+                    widget.destroy()
+                
+                # Create new label for the checkmark, centered
                 inner_frame.configure(bg="#4CAF50")
-                if points_label:
-                    points_label.configure(bg="#4CAF50", text="")
+                symbol_label = tk.Label(inner_frame, text="✓", bg="#4CAF50", fg="white")
+                symbol_label.pack(expand=True, fill=tk.BOTH)
+                
+                # Update the stored reference
+                if len(btn_tuple) == 4:
+                    # Update the tuple in active_widgets
+                    self.active_frame.active_widgets['buttons'][row][col] = (btn_frame, symbol_label, inner_frame, None)
+            else:
+                # Fallback for older structure
+                btn_label.configure(bg="#4CAF50", text="✓", image="", fg="white")
+            
             question_window.destroy()
             self.next_team()
             if len(self.active_frame.used_tiles) == len(self.questions):
@@ -1266,14 +1280,31 @@ class QuizGame:
         def mark_wrong():
             # Stop any pygame audio
             if self._audio_initialized:
-                pygame.mixer.stop()
+                pygame.mixer.music.stop()
             self.active_frame.used_tiles.add(idx)
+            
+            # Update the tile appearance
             btn_frame.configure(bg="#F44336")
-            btn_label.configure(bg="#F44336", text="✗", image="")
+            
+            # Clear the current content and recreate for symbol display
             if inner_frame:
+                # Clear all existing content in inner_frame
+                for widget in inner_frame.winfo_children():
+                    widget.destroy()
+                
+                # Create new label for the X mark, centered
                 inner_frame.configure(bg="#F44336")
-                if points_label:
-                    points_label.configure(bg="#F44336", text="")
+                symbol_label = tk.Label(inner_frame, text="✗", bg="#F44336", fg="white")
+                symbol_label.pack(expand=True, fill=tk.BOTH)
+                
+                # Update the stored reference
+                if len(btn_tuple) == 4:
+                    # Update the tuple in active_widgets
+                    self.active_frame.active_widgets['buttons'][row][col] = (btn_frame, symbol_label, inner_frame, None)
+            else:
+                # Fallback for older structure
+                btn_label.configure(bg="#F44336", text="✗", image="", fg="white")
+            
             question_window.destroy()
             self.next_team()
             if len(self.active_frame.used_tiles) == len(self.questions):
