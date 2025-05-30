@@ -911,12 +911,15 @@ class QuizGame:
         else:
             btn_frame, btn_label, inner_frame, points_label = btn_tuple
 
-        # --- Create question window ---
+        # --- Create question window (initially hidden) ---
         question_window = tk.Toplevel(self.root)
         question_window.title("Question")
         question_window.configure(bg=self.bg_color)
         question_window.resizable(True, True)
         question_window.minsize(400, 300)
+        
+        # Hide window initially to prevent jumping
+        question_window.withdraw()
 
         content_frame = tk.Frame(question_window, bg=self.bg_color)
         content_frame.pack(padx=20, pady=20, fill=tk.BOTH, expand=True)
@@ -970,8 +973,6 @@ class QuizGame:
                 question_window._resize_job = question_window.after(100, do_resize)
 
             question_window.bind("<Configure>", schedule_resize)
-            question_window.update_idletasks()
-            do_resize()
 
             # Enlarged click handler
             def show_enlarged(event=None):
@@ -979,6 +980,9 @@ class QuizGame:
                 ew.title("Enlarged Image")
                 ew.configure(bg=self.bg_color)
                 ew.transient(question_window)
+                
+                # Hide initially
+                ew.withdraw()
 
                 sw, sh = ew.winfo_screenwidth(), ew.winfo_screenheight()
                 iw, ih = original_img.size
@@ -999,11 +1003,14 @@ class QuizGame:
                 lbl.image = photo
                 lbl.pack(padx=10, pady=10)
 
-                # center
+                # Update and center
                 ew.update_idletasks()
                 x = (sw - ew.winfo_width()) // 2
                 y = (sh - ew.winfo_height()) // 2
                 ew.geometry(f"+{x}+{y}")
+                
+                # Show after positioning
+                ew.deiconify()
 
                 lbl.bind("<Button-1>", lambda e: ew.destroy())
                 ew.bind("<Escape>", lambda e: ew.destroy())
@@ -1245,7 +1252,6 @@ class QuizGame:
             justify="center"
         )
         qlabel.pack(pady=10)
-        question_window.update_idletasks()
 
         # --- Answer / scoring handlers ---
         def mark_correct():
@@ -1340,7 +1346,6 @@ class QuizGame:
                 justify="center"
             )
             ans_lbl.pack(pady=10)
-            question_window.update_idletasks()
 
             action = tk.Frame(content_frame, bg=self.bg_color)
             action.pack(pady=10, fill=tk.X)
@@ -1363,8 +1368,10 @@ class QuizGame:
             wf.bind("<Button-1>", lambda e: mark_wrong())
             wl.bind("<Button-1>", lambda e: mark_wrong())
 
+            # Update window size and center
             question_window.update_idletasks()
-            w, h = max(400, question_window.winfo_reqwidth()), question_window.winfo_reqheight()
+            w = max(400, question_window.winfo_reqwidth())
+            h = question_window.winfo_reqheight()
             self.center_window(question_window, w, h)
             question_window.minsize(w, h)
 
@@ -1377,11 +1384,21 @@ class QuizGame:
         rf.bind("<Button-1>", lambda e: reveal_answer())
         rl.bind("<Button-1>", lambda e: reveal_answer())
 
-        # Final center
+        # Build all content first, then calculate size
         question_window.update_idletasks()
-        w, h = max(400, question_window.winfo_reqwidth()), question_window.winfo_reqheight()
+        
+        # Do initial image resize if present
+        if img_label:
+            question_window.after(10, do_resize)
+        
+        # Final sizing and centering
+        w = max(400, question_window.winfo_reqwidth())
+        h = question_window.winfo_reqheight()
         self.center_window(question_window, w, h)
         question_window.minsize(w, h)
+        
+        # Show window after positioning
+        question_window.deiconify()
 
 
     def show_game_menu(self):
@@ -1688,7 +1705,7 @@ class QuizGame:
             self.fonts[key].configure(size=new_size, weight=wt)
 
     def center_window(self, window, width, height):
-        """Centers a window on top of the main root window."""
+        """Centers a window on top of the main root window with no jumping."""
         parent_x = self.root.winfo_rootx()
         parent_y = self.root.winfo_rooty()
         parent_width = self.root.winfo_width()
@@ -1696,12 +1713,9 @@ class QuizGame:
 
         x = parent_x + (parent_width - width) // 2
         y = parent_y + (parent_height - height) // 2
+        
+        # Set position and size in one call
         window.geometry(f"{width}x{height}+{x}+{y}")
-
-        window.update_idletasks()
-        x = parent_x + (parent_width - window.winfo_width()) // 2
-        y = parent_y + (parent_height - window.winfo_height()) // 2
-        window.geometry(f"+{x}+{y}")
 
 
 if __name__ == "__main__":
