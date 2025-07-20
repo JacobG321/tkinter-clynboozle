@@ -17,8 +17,10 @@ from .services.game_logic import GameLogicService
 from .services.media_service import MediaService
 from .services.audio_service import AudioService
 from .services.file_service import FileService
+from .services.question_set_service import QuestionSetService
 from .ui.main_menu import MainMenuFrame
 from .ui.team_setup import TeamSetupFrame
+from .ui.question_manager import QuestionManagerFrame
 
 
 class ClynBoozleApp:
@@ -45,6 +47,7 @@ class ClynBoozleApp:
         self.media_service: Optional[MediaService] = None
         self.audio_service: Optional[AudioService] = None
         self.file_service: Optional[FileService] = None
+        self.question_set_service: Optional[QuestionSetService] = None
 
         # UI State
         self.current_frame: Optional[tk.Frame] = None
@@ -107,6 +110,7 @@ class ClynBoozleApp:
         self.media_service = MediaService(base_dir)
         self.audio_service = AudioService()
         self.game_service = GameLogicService()
+        self.question_set_service = QuestionSetService(self.file_service)
 
         self.logger.info("All services initialized successfully")
 
@@ -155,8 +159,27 @@ class ClynBoozleApp:
 
         self.current_frame.grid(row=0, column=0, sticky="nsew")
 
+    def _show_question_manager(self) -> None:
+        """Show the question manager screen."""
+        if self.current_frame:
+            self.current_frame.destroy()
+
+        # Create question manager frame
+        self.current_frame = QuestionManagerFrame(
+            self.root,
+            self,
+            question_set_service=self.question_set_service,
+        )
+
+        # Set up navigation callbacks
+        self.current_frame.set_callbacks(
+            on_back=self._handle_back_to_main_menu,
+            on_use_set=self._handle_use_question_set,
+        )
+
+        self.current_frame.grid(row=0, column=0, sticky="nsew")
+
     def _show_team_setup(self) -> None:
-        """Show the team setup screen."""
         if self.current_frame:
             self.current_frame.destroy()
 
@@ -231,17 +254,8 @@ class ClynBoozleApp:
     def _handle_manage_questions(self) -> None:
         """Handle manage questions button click."""
         if self.logger:
-            self.logger.info("Manage questions button clicked")
-        try:
-            import tkinter.messagebox as mb
-
-            mb.showinfo(
-                "ClynBoozle",
-                "Question Manager feature is working!\n\nThis will open the question set manager in the full implementation.",
-            )
-        except Exception as e:
-            if self.logger:
-                self.logger.error(f"Error showing manage questions dialog: {e}")
+            self.logger.info("Manage questions button clicked - navigating to question manager")
+        self._show_question_manager()
 
     def _handle_quit(self) -> None:
         """Handle quit button click."""
@@ -273,6 +287,18 @@ class ClynBoozleApp:
         except Exception as e:
             if self.logger:
                 self.logger.error(f"Error showing game start dialog: {e}")
+
+    def _handle_use_question_set(self, set_name: str) -> None:
+        """Handle using a question set (return to main menu with set selected)."""
+        if self.logger:
+            self.logger.info(f"Question set selected: {set_name}")
+        
+        # Set the selected question set as current
+        if self.question_set_service:
+            self.question_set_service.set_current_question_set(set_name)
+        
+        # Return to main menu
+        self._show_main_menu()
 
     # Navigation methods for UI components
     def show_team_setup(self, team_names: Optional[list] = None) -> None:
