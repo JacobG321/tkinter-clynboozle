@@ -20,16 +20,29 @@ class MainMenuFrame(BaseFrame):
     - Responsive design with proper scaling
     """
 
-    def __init__(self, master: tk.Widget, app: Any, **kwargs) -> None:
+    def __init__(
+        self, 
+        master: tk.Widget, 
+        app: Any, 
+        game_service: Optional[Any] = None,
+        media_service: Optional[Any] = None,
+        **kwargs
+    ) -> None:
         """
         Initialize the main menu frame.
 
         Args:
             master: Parent widget
             app: Main application instance
+            game_service: Game logic service instance
+            media_service: Media management service instance
             **kwargs: Additional arguments passed to BaseFrame
         """
         super().__init__(master, app, **kwargs)
+
+        # Store service dependencies
+        self.game_service = game_service
+        self.media_service = media_service
 
         # Store callbacks for navigation
         self.on_play_game: Optional[Callable[[], None]] = None
