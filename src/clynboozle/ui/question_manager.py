@@ -700,7 +700,7 @@ class QuestionManagerFrame(BaseFrame):
         dialog.configure(bg=ColorConfig.PRIMARY_BG)
         dialog.transient(self)
         dialog.grab_set()
-        
+
         # Set size and center immediately to avoid positioning jump
         dialog_width = 700
         dialog_height = 600
@@ -709,7 +709,7 @@ class QuestionManagerFrame(BaseFrame):
         x = (screen_width // 2) - (dialog_width // 2)
         y = (screen_height // 2) - (dialog_height // 2)
         dialog.geometry(f"{dialog_width}x{dialog_height}+{x}+{y}")
-        
+
         # Ensure dialog appears on top
         dialog.lift()
         dialog.focus_force()
@@ -741,8 +741,7 @@ class QuestionManagerFrame(BaseFrame):
         scrollable_frame = tk.Frame(canvas, bg=ColorConfig.PRIMARY_BG)
 
         scrollable_frame.bind(
-            "<Configure>",
-            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+            "<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
         )
 
         canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
@@ -758,8 +757,8 @@ class QuestionManagerFrame(BaseFrame):
         # Bind mouse wheel events to canvas for trackpad support
         canvas.bind("<MouseWheel>", _on_mousewheel)  # Windows/Linux
         canvas.bind("<Button-4>", lambda e: canvas.yview_scroll(-1, "units"))  # Linux scroll up
-        canvas.bind("<Button-5>", lambda e: canvas.yview_scroll(1, "units"))   # Linux scroll down
-        
+        canvas.bind("<Button-5>", lambda e: canvas.yview_scroll(1, "units"))  # Linux scroll down
+
         # Make sure canvas can receive focus for scroll events
         canvas.focus_set()
 
@@ -772,42 +771,58 @@ class QuestionManagerFrame(BaseFrame):
         # Title
         title_text = "Add New Question" if edit_index is None else "Edit Question"
         tk.Label(
-            main_frame, 
+            main_frame,
             text=title_text,
             font=(FontConfig.FAMILY, FontConfig.TITLE_SIZE, "bold"),
-            bg=ColorConfig.PRIMARY_BG, 
-            fg=ColorConfig.GOLD
+            bg=ColorConfig.PRIMARY_BG,
+            fg=ColorConfig.GOLD,
         ).pack(pady=(0, 20))
 
         # Question text
         tk.Label(
-            main_frame, text="Question:", font=(FontConfig.FAMILY, FontConfig.LABEL_SIZE),
-            bg=ColorConfig.PRIMARY_BG, fg=ColorConfig.PRIMARY_TEXT
+            main_frame,
+            text="Question:",
+            font=(FontConfig.FAMILY, FontConfig.LABEL_SIZE),
+            bg=ColorConfig.PRIMARY_BG,
+            fg=ColorConfig.PRIMARY_TEXT,
         ).pack(anchor="w")
 
         question_text = tk.Text(
-            main_frame, height=4, font=(FontConfig.FAMILY, FontConfig.SMALL_SIZE),
-            bg=ColorConfig.ENTRY_BG, fg=ColorConfig.PRIMARY_TEXT, wrap=tk.WORD
+            main_frame,
+            height=4,
+            font=(FontConfig.FAMILY, FontConfig.SMALL_SIZE),
+            bg=ColorConfig.ENTRY_BG,
+            fg=ColorConfig.PRIMARY_TEXT,
+            wrap=tk.WORD,
         )
         question_text.pack(fill=tk.X, pady=(5, 15))
 
         # Answer
         tk.Label(
-            main_frame, text="Answer:", font=(FontConfig.FAMILY, FontConfig.LABEL_SIZE),
-            bg=ColorConfig.PRIMARY_BG, fg=ColorConfig.PRIMARY_TEXT
+            main_frame,
+            text="Answer:",
+            font=(FontConfig.FAMILY, FontConfig.LABEL_SIZE),
+            bg=ColorConfig.PRIMARY_BG,
+            fg=ColorConfig.PRIMARY_TEXT,
         ).pack(anchor="w")
 
         answer_var = tk.StringVar()
         answer_entry = tk.Entry(
-            main_frame, textvariable=answer_var, font=(FontConfig.FAMILY, FontConfig.SMALL_SIZE),
-            bg=ColorConfig.ENTRY_BG, fg=ColorConfig.PRIMARY_TEXT
+            main_frame,
+            textvariable=answer_var,
+            font=(FontConfig.FAMILY, FontConfig.SMALL_SIZE),
+            bg=ColorConfig.ENTRY_BG,
+            fg=ColorConfig.PRIMARY_TEXT,
         )
         answer_entry.pack(fill=tk.X, pady=(5, 15))
 
         # Points
         tk.Label(
-            main_frame, text="Points:", font=(FontConfig.FAMILY, FontConfig.LABEL_SIZE),
-            bg=ColorConfig.PRIMARY_BG, fg=ColorConfig.PRIMARY_TEXT
+            main_frame,
+            text="Points:",
+            font=(FontConfig.FAMILY, FontConfig.LABEL_SIZE),
+            bg=ColorConfig.PRIMARY_BG,
+            fg=ColorConfig.PRIMARY_TEXT,
         ).pack(anchor="w")
 
         points_var = tk.StringVar(value="10")
@@ -815,10 +830,12 @@ class QuestionManagerFrame(BaseFrame):
         points_frame.pack(fill=tk.X, pady=(5, 20))
 
         points_combo = ttk.Combobox(
-            points_frame, textvariable=points_var,
+            points_frame,
+            textvariable=points_var,
             values=["5", "10", "15", "20", "25", "30", "50", "100"],
-            width=10, font=(FontConfig.FAMILY, FontConfig.SMALL_SIZE),
-            state="readonly"
+            width=10,
+            font=(FontConfig.FAMILY, FontConfig.SMALL_SIZE),
+            state="readonly",
         )
         points_combo.pack(side=tk.LEFT)
 
@@ -828,11 +845,11 @@ class QuestionManagerFrame(BaseFrame):
 
         # Media section title
         tk.Label(
-            main_frame, 
+            main_frame,
             text="Media Files (Optional)",
             font=(FontConfig.FAMILY, FontConfig.LABEL_SIZE, "bold"),
-            bg=ColorConfig.PRIMARY_BG, 
-            fg=ColorConfig.GOLD
+            bg=ColorConfig.PRIMARY_BG,
+            fg=ColorConfig.GOLD,
         ).pack(pady=(0, 15))
 
         # Tile Image section
@@ -840,26 +857,34 @@ class QuestionManagerFrame(BaseFrame):
         tile_frame.pack(fill=tk.X, pady=(0, 10), padx=5)
 
         tk.Label(
-            tile_frame, text="Tile Image:", font=(FontConfig.FAMILY, FontConfig.LABEL_SIZE),
-            bg=ColorConfig.SECONDARY_BG, fg=ColorConfig.PRIMARY_TEXT
+            tile_frame,
+            text="Tile Image:",
+            font=(FontConfig.FAMILY, FontConfig.LABEL_SIZE),
+            bg=ColorConfig.SECONDARY_BG,
+            fg=ColorConfig.PRIMARY_TEXT,
         ).pack(anchor="w", padx=10, pady=(10, 5))
 
         tile_info_var = tk.StringVar(value="No tile image selected")
         tile_info_label = tk.Label(
-            tile_frame, textvariable=tile_info_var, font=(FontConfig.FAMILY, FontConfig.SMALL_SIZE),
-            bg=ColorConfig.SECONDARY_BG, fg=ColorConfig.MUTED_TEXT
+            tile_frame,
+            textvariable=tile_info_var,
+            font=(FontConfig.FAMILY, FontConfig.SMALL_SIZE),
+            bg=ColorConfig.SECONDARY_BG,
+            fg=ColorConfig.MUTED_TEXT,
         )
         tile_info_label.pack(anchor="w", padx=10)
 
         def select_tile_image():
             nonlocal tile_image_ref
-            if hasattr(self.app, 'media_service'):
-                browser = MediaBrowserDialog(dialog, self.app.media_service, "image", "Select Tile Image")
+            if hasattr(self.app, "media_service"):
+                browser = MediaBrowserDialog(
+                    dialog, self.app.media_service, "image", "Select Tile Image"
+                )
                 result = browser.show()
                 if result:
                     tile_image_ref = result
                     tile_info_var.set(f"Selected: {result.filename}")
-                    
+
         def clear_tile_image():
             nonlocal tile_image_ref
             tile_image_ref = None
@@ -871,56 +896,70 @@ class QuestionManagerFrame(BaseFrame):
         # Select tile image button container
         select_tile_container = tk.Frame(tile_buttons, bg=ColorConfig.SECONDARY_BG)
         select_tile_container.pack(side=tk.LEFT, padx=(0, 5))
-        
+
         select_tile_frame, select_tile_label = self.create_clickable_frame(
             select_tile_container,
             "Select Image",
             ColorConfig.PRIMARY_COLOR,
-            row=0, col=0,
+            row=0,
+            col=0,
             command=select_tile_image,
-            width=100, height=30,
+            width=100,
+            height=30,
             font=(FontConfig.FAMILY, FontConfig.SMALL_SIZE, "bold"),
         )
 
         # Clear tile image button container
         clear_tile_container = tk.Frame(tile_buttons, bg=ColorConfig.SECONDARY_BG)
         clear_tile_container.pack(side=tk.LEFT)
-        
+
         clear_tile_frame, clear_tile_label = self.create_clickable_frame(
             clear_tile_container,
             "Clear",
             ColorConfig.SECONDARY_COLOR,
-            row=0, col=0,
+            row=0,
+            col=0,
             command=clear_tile_image,
-            width=60, height=30,
+            width=60,
+            height=30,
             font=(FontConfig.FAMILY, FontConfig.SMALL_SIZE, "bold"),
         )
 
         # Question Image section
-        question_img_frame = tk.Frame(main_frame, bg=ColorConfig.SECONDARY_BG, relief=tk.RAISED, bd=1)
+        question_img_frame = tk.Frame(
+            main_frame, bg=ColorConfig.SECONDARY_BG, relief=tk.RAISED, bd=1
+        )
         question_img_frame.pack(fill=tk.X, pady=(0, 10), padx=5)
 
         tk.Label(
-            question_img_frame, text="Question Image:", font=(FontConfig.FAMILY, FontConfig.LABEL_SIZE),
-            bg=ColorConfig.SECONDARY_BG, fg=ColorConfig.PRIMARY_TEXT
+            question_img_frame,
+            text="Question Image:",
+            font=(FontConfig.FAMILY, FontConfig.LABEL_SIZE),
+            bg=ColorConfig.SECONDARY_BG,
+            fg=ColorConfig.PRIMARY_TEXT,
         ).pack(anchor="w", padx=10, pady=(10, 5))
 
         question_img_info_var = tk.StringVar(value="No question image selected")
         question_img_info_label = tk.Label(
-            question_img_frame, textvariable=question_img_info_var, font=(FontConfig.FAMILY, FontConfig.SMALL_SIZE),
-            bg=ColorConfig.SECONDARY_BG, fg=ColorConfig.MUTED_TEXT
+            question_img_frame,
+            textvariable=question_img_info_var,
+            font=(FontConfig.FAMILY, FontConfig.SMALL_SIZE),
+            bg=ColorConfig.SECONDARY_BG,
+            fg=ColorConfig.MUTED_TEXT,
         )
         question_img_info_label.pack(anchor="w", padx=10)
 
         def select_question_image():
             nonlocal question_image_ref
-            if hasattr(self.app, 'media_service'):
-                browser = MediaBrowserDialog(dialog, self.app.media_service, "image", "Select Question Image")
+            if hasattr(self.app, "media_service"):
+                browser = MediaBrowserDialog(
+                    dialog, self.app.media_service, "image", "Select Question Image"
+                )
                 result = browser.show()
                 if result:
                     question_image_ref = result
                     question_img_info_var.set(f"Selected: {result.filename}")
-                    
+
         def clear_question_image():
             nonlocal question_image_ref
             question_image_ref = None
@@ -932,28 +971,32 @@ class QuestionManagerFrame(BaseFrame):
         # Select question image button container
         select_question_img_container = tk.Frame(question_img_buttons, bg=ColorConfig.SECONDARY_BG)
         select_question_img_container.pack(side=tk.LEFT, padx=(0, 5))
-        
+
         select_question_img_frame, select_question_img_label = self.create_clickable_frame(
             select_question_img_container,
             "Select Image",
             ColorConfig.PRIMARY_COLOR,
-            row=0, col=0,
+            row=0,
+            col=0,
             command=select_question_image,
-            width=100, height=30,
+            width=100,
+            height=30,
             font=(FontConfig.FAMILY, FontConfig.SMALL_SIZE, "bold"),
         )
 
         # Clear question image button container
         clear_question_img_container = tk.Frame(question_img_buttons, bg=ColorConfig.SECONDARY_BG)
         clear_question_img_container.pack(side=tk.LEFT)
-        
+
         clear_question_img_frame, clear_question_img_label = self.create_clickable_frame(
             clear_question_img_container,
             "Clear",
             ColorConfig.SECONDARY_COLOR,
-            row=0, col=0,
+            row=0,
+            col=0,
             command=clear_question_image,
-            width=60, height=30,
+            width=60,
+            height=30,
             font=(FontConfig.FAMILY, FontConfig.SMALL_SIZE, "bold"),
         )
 
@@ -962,26 +1005,34 @@ class QuestionManagerFrame(BaseFrame):
         audio_frame.pack(fill=tk.X, pady=(0, 20), padx=5)
 
         tk.Label(
-            audio_frame, text="Question Audio:", font=(FontConfig.FAMILY, FontConfig.LABEL_SIZE),
-            bg=ColorConfig.SECONDARY_BG, fg=ColorConfig.PRIMARY_TEXT
+            audio_frame,
+            text="Question Audio:",
+            font=(FontConfig.FAMILY, FontConfig.LABEL_SIZE),
+            bg=ColorConfig.SECONDARY_BG,
+            fg=ColorConfig.PRIMARY_TEXT,
         ).pack(anchor="w", padx=10, pady=(10, 5))
 
         audio_info_var = tk.StringVar(value="No question audio selected")
         audio_info_label = tk.Label(
-            audio_frame, textvariable=audio_info_var, font=(FontConfig.FAMILY, FontConfig.SMALL_SIZE),
-            bg=ColorConfig.SECONDARY_BG, fg=ColorConfig.MUTED_TEXT
+            audio_frame,
+            textvariable=audio_info_var,
+            font=(FontConfig.FAMILY, FontConfig.SMALL_SIZE),
+            bg=ColorConfig.SECONDARY_BG,
+            fg=ColorConfig.MUTED_TEXT,
         )
         audio_info_label.pack(anchor="w", padx=10)
 
         def select_question_audio():
             nonlocal question_audio_ref
-            if hasattr(self.app, 'media_service'):
-                browser = MediaBrowserDialog(dialog, self.app.media_service, "audio", "Select Question Audio")
+            if hasattr(self.app, "media_service"):
+                browser = MediaBrowserDialog(
+                    dialog, self.app.media_service, "audio", "Select Question Audio"
+                )
                 result = browser.show()
                 if result:
                     question_audio_ref = result
                     audio_info_var.set(f"Selected: {result.filename}")
-                    
+
         def clear_question_audio():
             nonlocal question_audio_ref
             question_audio_ref = None
@@ -993,28 +1044,32 @@ class QuestionManagerFrame(BaseFrame):
         # Select audio button container
         select_audio_container = tk.Frame(audio_buttons, bg=ColorConfig.SECONDARY_BG)
         select_audio_container.pack(side=tk.LEFT, padx=(0, 5))
-        
+
         select_audio_frame, select_audio_label = self.create_clickable_frame(
             select_audio_container,
             "Select Audio",
             ColorConfig.PRIMARY_COLOR,
-            row=0, col=0,
+            row=0,
+            col=0,
             command=select_question_audio,
-            width=100, height=30,
+            width=100,
+            height=30,
             font=(FontConfig.FAMILY, FontConfig.SMALL_SIZE, "bold"),
         )
 
         # Clear audio button container
         clear_audio_container = tk.Frame(audio_buttons, bg=ColorConfig.SECONDARY_BG)
         clear_audio_container.pack(side=tk.LEFT)
-        
+
         clear_audio_frame, clear_audio_label = self.create_clickable_frame(
             clear_audio_container,
             "Clear",
             ColorConfig.SECONDARY_COLOR,
-            row=0, col=0,
+            row=0,
+            col=0,
             command=clear_question_audio,
-            width=60, height=30,
+            width=60,
+            height=30,
             font=(FontConfig.FAMILY, FontConfig.SMALL_SIZE, "bold"),
         )
 
@@ -1023,7 +1078,7 @@ class QuestionManagerFrame(BaseFrame):
             question_text.insert("1.0", existing_question.question)
             answer_var.set(existing_question.answer)
             points_var.set(str(existing_question.points))
-            
+
             # Update media display
             if tile_image_ref:
                 tile_info_var.set(f"Selected: {tile_image_ref.filename}")
@@ -1051,12 +1106,12 @@ class QuestionManagerFrame(BaseFrame):
             try:
                 points = int(p_value)
                 question = Question(
-                    question=q_text, 
-                    answer=a_text, 
+                    question=q_text,
+                    answer=a_text,
                     points=points,
                     tile_image=tile_image_ref,
                     question_image=question_image_ref,
-                    question_audio=question_audio_ref
+                    question_audio=question_audio_ref,
                 )
 
                 question_set = self.question_set_service.get_question_set(self.current_set_name)
@@ -1077,28 +1132,32 @@ class QuestionManagerFrame(BaseFrame):
         # Cancel button container
         cancel_container = tk.Frame(button_frame, bg=ColorConfig.PRIMARY_BG)
         cancel_container.grid(row=0, column=1, padx=(0, 5))
-        
+
         cancel_frame, cancel_label = self.create_clickable_frame(
             cancel_container,
             "Cancel",
             ColorConfig.SECONDARY_COLOR,
-            row=0, col=0,
+            row=0,
+            col=0,
             command=dialog.destroy,
-            width=80, height=35,
+            width=80,
+            height=35,
             font=(FontConfig.FAMILY, FontConfig.SMALL_SIZE, "bold"),
         )
 
         # Save button container
         save_container = tk.Frame(button_frame, bg=ColorConfig.PRIMARY_BG)
         save_container.grid(row=0, column=2, padx=(5, 0))
-        
+
         save_frame, save_label = self.create_clickable_frame(
             save_container,
             "Save",
             ColorConfig.SUCCESS_COLOR,
-            row=0, col=0,
+            row=0,
+            col=0,
             command=save_question,
-            width=80, height=35,
+            width=80,
+            height=35,
             font=(FontConfig.FAMILY, FontConfig.SMALL_SIZE, "bold"),
         )
 
