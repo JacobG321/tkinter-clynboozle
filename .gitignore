@@ -38,6 +38,8 @@ notes-n-tests/
 htmlcov/
 .tox/
 .mypy_cache/
+old-files-for-reference/
+current-state-images/
 
 # IDE files
 .vscode/

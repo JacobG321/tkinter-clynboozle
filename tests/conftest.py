@@ -3,10 +3,10 @@
 import pytest
 import tempfile
 import shutil
-from pathlib import Path
-from typing import Generator, Dict, Any
 import sys
 import os
+from pathlib import Path
+from typing import Generator, Dict, Any
 
 # Add src directory to Python path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
@@ -83,19 +83,14 @@ def question_set_data() -> Dict[str, Any]:
         "name": "Test Quiz",
         "description": "A test quiz for unit testing",
         "questions": [
-            {
-                "question": "What is 2+2?",
-                "answer": "4", 
-                "points": 10,
-                "media_id": None
-            },
+            {"question": "What is 2+2?", "answer": "4", "points": 10, "media_id": None},
             {
                 "question": "What is the capital of France?",
                 "answer": "Paris",
                 "points": 20,
-                "media_id": None
-            }
-        ]
+                "media_id": None,
+            },
+        ],
     }
 
 
@@ -114,10 +109,10 @@ def mock_media_data() -> Dict[str, Any]:
                 "file_variants": {
                     "original": "test-id-1_original.png",
                     "thumbnail": "test-id-1_thumbnail.png",
-                    "tile": "test-id-1_tile.png"
-                }
+                    "tile": "test-id-1_tile.png",
+                },
             }
         },
         "total_items": 1,
-        "total_size": 1024
+        "total_size": 1024,
     }

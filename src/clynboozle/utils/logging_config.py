@@ -82,6 +82,7 @@ class LoggingConfig:
         except Exception:
             # Fallback to system temp directory
             import tempfile
+
             return os.path.join(tempfile.gettempdir(), "clynboozle.log")
 
     @classmethod

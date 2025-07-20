@@ -141,82 +141,173 @@ The application uses a sophisticated responsive design system:
 - Separate markers for slow, integration, and GUI tests
 - Test fixtures for game state and media handling
 
-## Refactoring Roadmap & Project Status
+## Project Status & Development Standards
 
-This project follows a comprehensive refactoring roadmap defined in `roadmap.md`. **Always consult the roadmap first** when working on this codebase, as it contains:
+### Current Project Status
+**🎉 REFACTORING COMPLETE - PROFESSIONAL MODULAR ARCHITECTURE 🎉**
 
-### Current Project Phase
-The project is in **Phase 5** (Testing & Final Polish) - Near Completion:
-- ✅ **Phases 1-3 Complete**: Project structure, business logic separation, and UI architecture
-- ✅ **Phase 4.1 Complete**: Logging configuration (`utils/logging_config.py`) and error handling
-- 🔄 **Phase 4.2 Partial**: Type hints and documentation (comprehensive type hints exist)
-- ✅ **Phase 4.3 Complete**: Performance optimizations (lazy loading, caching)
-- ✅ **Phase 5.1 Complete**: Unit testing framework with pytest (32 passing model tests)
-- ✅ **Phase 5.3 Complete**: New main application entry point (`src/clynboozle/main.py`)
+The project has completed a comprehensive refactoring from a monolithic application to a professional modular architecture:
 
-### Roadmap Guidance
-The `roadmap.md` file contains:
+- ✅ **Project Structure**: Proper package structure with `src/clynboozle/` organization
+- ✅ **Business Logic Separation**: Models, services, and UI layers cleanly separated
+- ✅ **Code Quality**: Type hints, logging, error handling, and testing framework
+- ✅ **UI Architecture**: Modular UI components with proper navigation
+- ✅ **Development Tools**: Makefile, pre-commit hooks, code quality tools
+- ✅ **Testing Framework**: 32 passing unit tests with comprehensive coverage
+- ✅ **Legacy Cleanup**: All monolithic files removed, clean architecture established
 
-1. **Quality Standards**: Function length (20-30 lines max), class length (200-300 lines max), naming conventions
-2. **Architecture Principles**: SOLID, DRY, KISS principles with separation of concerns
-3. **Development Standards**: Virtual environment setup, testing protocols, code quality commands
-4. **Testing Philosophy**: "Test early, test often" with graceful degradation
-5. **Success Criteria**: Technical metrics and maintainability improvements
+### Core Development Principles
+- **KISS (Keep It Simple, Stupid)**: Simplify complex logic, reduce cognitive load
+- **DRY (Don't Repeat Yourself)**: Eliminate code duplication, create reusable components
+- **SOLID Principles**: Single Responsibility, Open/Closed, Liskov Substitution, Interface Segregation, Dependency Inversion
+- **Clean Code**: Readable, self-documenting code with clear naming conventions
+- **Separation of Concerns**: Business logic separate from UI, clear module boundaries
+- **Testability**: Code structure that enables unit testing
+- **Type Safety**: Comprehensive type hints for better IDE support and error prevention
 
-### Key Development Commands from Roadmap
+### Quality Standards
+- **Maximum function length**: 20-30 lines
+- **Maximum class length**: 200-300 lines
+- **Clear, descriptive naming** (no abbreviations unless standard)
+- **Comprehensive error handling** with user-friendly messages
+- **Proper logging** for debugging and monitoring
+- **Documentation** for all public interfaces
+
+### Virtual Environment & Dependency Management
+- **Always use virtual environment**: Create with `python3 -m venv venv` and activate with `source venv/bin/activate`
+- **Install dependencies in order**: First upgrade pip, then install `requirements.txt`, then `requirements-dev.txt`
+- **Test environment setup**: Verify all core modules import correctly before proceeding with development
+- **Dependency verification**: Test that optional dependencies (PIL/Pillow, pygame) work gracefully when missing
+
+### Code Quality Standards & Testing Protocol
+- **Import testing**: After creating/refactoring modules, always test imports with simple Python commands
+- **Functionality testing**: Create small test scripts to verify business logic works as expected
+- **Code formatting**: Use `black` for consistent formatting across all Python files
+- **Linting standards**: Use `flake8` with `--max-line-length=100 --ignore=F401,E501` for quality checks
+- **Type checking**: Run `mypy` with `--ignore-missing-imports` to catch type issues (expect some PIL/pygame warnings in dev)
+
+### Modern Development Commands
 ```bash
-# Environment verification (always check first)
+# Environment setup
+make setup          # Complete development environment setup
 source venv/bin/activate
-python -c "from src.clynboozle.services import MediaService; print('✅ Services import')"
 
-# Code quality checks
-black src/clynboozle --line-length=100
-flake8 src/clynboozle --max-line-length=100 --ignore=F401,E501
-mypy src/clynboozle --ignore-missing-imports
+# Running the application
+make run            # Run the application
+make dev            # Run with debug logging
+python run_clynboozle.py
 
-# Service testing patterns
+# Code quality (all integrated)
+make quality        # Format + lint in one command
+make format         # Black code formatting
+make lint           # Flake8 linting
+make type-check     # MyPy type checking
+
+# Testing
+make test           # Run all tests
+make test-models    # Run core business logic tests
+make test-cov       # Test with coverage report
+
+# Building
+make build          # Build distributable with PyInstaller
+make clean          # Clean temporary files
+```
+
+### Essential Testing Commands
+```bash
+# Environment setup
+python3 -m venv venv
+source venv/bin/activate
+pip install --upgrade pip
+pip install -r requirements.txt
+pip install -r requirements-dev.txt
+
+# Import verification
+python -c "from src.clynboozle.services import MediaService, AudioService; print('✅ Services import')"
+python -c "from src.clynboozle.models import Question, Team, GameState; print('✅ Models import')"
+python -c "from src.clynboozle.config import settings, messages; print('✅ Config imports')"
+
+# Functionality testing
 python -c "
 from src.clynboozle.services import GameLogicService
 from src.clynboozle.models import Question
 game_service = GameLogicService()
 question = Question(question='Test?', answer='Yes', points=10)
-game = game_service.create_game(['Team A'], [question])
+game = game_service.create_game(['Team A', 'Team B'], [question])
 game_service.start_game()
-print(f'✅ Game works: {game.current_team.name}')
+print(f'✅ Game works: {game.current_team.name} playing')
 "
+
+# Code quality checks
+black src/clynboozle --line-length=100
+flake8 src/clynboozle --max-line-length=100 --ignore=F401,E501 --statistics
+mypy src/clynboozle --ignore-missing-imports
 ```
 
-### Legacy vs Modular Code
-- **Legacy Files**: `main.py` (root), `question_set_manager.py`, `media_manager.py`, `media_browser.py`
-- **Modular Architecture**: `src/clynboozle/` with proper service separation
-- **Transition State**: Both systems coexist during migration
+### Successful Refactoring Patterns
+1. **Config extraction**: Move all constants to `settings.py` classes (Colors, WindowConfig, etc.)
+2. **Service pattern**: Create services that manage state internally, expose clean public APIs
+3. **Dataclass usage**: Use `@dataclass` for models with validation in `__post_init__`
+4. **Path handling**: Use `pathlib.Path` instead of string concatenation for cross-platform support
+5. **Error hierarchies**: Custom exceptions with clear inheritance (ValidationError, MediaLoadError, etc.)
 
-### Common Pitfalls (from Roadmap)
-- Use `team.add_points()` not `team.add_score()`
-- Must call `game_service.start_game()` before `next_turn()`
-- Use `game.current_team` (property) not `game.get_current_team()` (method)
-- GameLogicService manages internal state - don't pass game objects to methods
+### Module Organization Architecture
+```
+src/clynboozle/
+├── config/          # All constants and configuration
+│   ├── settings.py  # Technical settings (colors, sizes, paths)
+│   └── messages.py  # User-facing text and error messages
+├── models/          # Business data models
+│   ├── question.py  # Question and MediaReference dataclasses
+│   ├── team.py      # Team dataclass with scoring logic
+│   └── game_state.py # GameState with turn management
+├── services/        # Business logic services
+│   ├── audio_service.py    # Pygame audio management
+│   ├── image_service.py    # PIL image processing
+│   ├── file_service.py     # File I/O operations
+│   ├── game_logic.py       # Game flow control
+│   └── media_service.py    # Media library management
+└── utils/           # Utilities and exceptions
+    └── exceptions.py # Custom exception hierarchy
+```
 
-### Next Priority Items
-Based on roadmap phases still pending:
-1. **Phase 5.2**: Code quality tools integration (linting, formatting, pre-commit hooks)
-2. **Phase 5.4**: Migration script for legacy question sets and final cleanup
-3. **Phase 4.2**: Complete documentation for public interfaces
+### Testing Philosophy & Patterns
+- **Test early, test often**: After each major component creation, run import and basic functionality tests
+- **Graceful degradation**: All services should work even when optional dependencies are missing
+- **Real-world scenarios**: Test with actual game flow (create game, start, take turns, score points)
+- **Error recovery**: Verify that error conditions are handled appropriately
 
-### Testing Framework Status
-**Phase 5.1 Complete**: Comprehensive testing framework established with pytest:
-- **32 passing model tests**: Complete coverage of Question, Team, and GameState models
-- **Test fixtures and utilities**: Robust test setup with proper mocking and data generation
-- **Integration test framework**: Ready for testing complete workflows
-- **Pytest configuration**: Proper markers, filtering, and output configuration
-- **Test commands**: `pytest tests/test_models.py -v` for model validation
+### Common API Pitfalls to Avoid
+- **Method name confusion**: Use `team.add_points()` not `team.add_score()`
+- **Game state requirement**: Must call `game_service.start_game()` before `next_turn()`
+- **Property vs method**: Use `game.current_team` (property) not `game.get_current_team()` (method)
+- **Service pattern**: GameLogicService manages internal state, don't pass game objects to methods
+- **Question model**: No `category` field, only `question`, `answer`, `points` are required
+- **UI Button sizing**: Use character units (width=20) not pixel units (width=250) for tkinter Button widgets
 
-### Testing Patterns That Work
-The established testing framework includes:
-- Import layer testing for module independence
-- Model validation testing (Question, Team, GameState)
-- Business logic testing with proper fixtures
-- Error boundary testing for graceful failures
-- Service integration testing (framework ready)
+### Terminal Command Best Practices
+- **Always check working directory**: Use `ls -la` to confirm location before commands
+- **Always check if a venv is already running**: `echo $VIRTUAL_ENV`
+- **If not active, activate virtual environment**: Every terminal session needs `source venv/bin/activate`
+- **Use descriptive explanations**: Each command should explain what it does
+- **Handle command failures**: Check exit codes and provide fallback approaches
+- **Test incrementally**: Don't run large test suites; test components individually first
 
-**Always reference the roadmap before making architectural decisions or when encountering issues during development.**
+### Development Environment Standards
+- **Python version**: 3.9+ (tested with 3.13.3)
+- **Required dependencies**: pillow, pygame for core functionality
+- **Development dependencies**: pytest, black, flake8, mypy, pre-commit for code quality
+- **IDE compatibility**: Type hints and structure designed for VS Code IntelliSense
+- **Cross-platform**: Path handling uses pathlib.Path for Windows/macOS/Linux compatibility
+
+### Current Limitations & Known Issues
+- **Question set management**: UI components exist but not fully integrated into navigation flow
+- **Button color issues**: Some platforms may not render button colors correctly (tkinter system theme overrides)
+- **Game board**: Exists but not yet integrated into the main application flow
+- **Media management**: Full media browser and question set editor need navigation integration
+
+### UI Development Notes
+- **Button sizing**: Always use character units for tkinter Button `width`/`height` parameters
+- **Color consistency**: Use `activebackground` and `activeforeground` to maintain button colors
+- **Platform differences**: macOS may override button styling - test on target platforms
+- **Navigation flow**: Use callback pattern for screen transitions, avoid direct UI dependencies

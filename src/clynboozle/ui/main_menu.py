@@ -21,12 +21,12 @@ class MainMenuFrame(BaseFrame):
     """
 
     def __init__(
-        self, 
-        master: tk.Widget, 
-        app: Any, 
+        self,
+        master: tk.Widget,
+        app: Any,
         game_service: Optional[Any] = None,
         media_service: Optional[Any] = None,
-        **kwargs
+        **kwargs,
     ) -> None:
         """
         Initialize the main menu frame.
@@ -70,41 +70,47 @@ class MainMenuFrame(BaseFrame):
         )
         self.title_label.grid(row=1, column=0, pady=(20, 40), sticky="s")
 
-        # Play Game button
-        self.play_button = self.create_styled_button(
+        # Play Game button (using Frame+Label approach for Mac color compatibility)
+        self.play_frame, self.play_label = self.create_clickable_frame(
             self.menu_frame,
             "Play Game",
+            ColorConfig.SUCCESS_COLOR,
+            row=2,
+            col=0,
+            pady=15,
             command=self._handle_play_game,
-            bg_color=ColorConfig.SUCCESS_COLOR,
+            width=250,
+            height=60,
             font=(FontConfig.FAMILY, FontConfig.BUTTON_SIZE, "bold"),
-            width=self.active_widgets["base_button_width"],
-            height=self.active_widgets["base_button_height"],
         )
-        self.play_button.grid(row=2, column=0, pady=15, sticky="")
 
         # Manage Question Sets button
-        self.manage_button = self.create_styled_button(
+        self.manage_frame, self.manage_label = self.create_clickable_frame(
             self.menu_frame,
             "Manage Question Sets",
+            ColorConfig.PRIMARY_COLOR,
+            row=3,
+            col=0,
+            pady=15,
             command=self._handle_manage_questions,
-            bg_color=ColorConfig.PRIMARY_COLOR,
+            width=250,
+            height=60,
             font=(FontConfig.FAMILY, FontConfig.BUTTON_SIZE, "bold"),
-            width=self.active_widgets["base_button_width"],
-            height=self.active_widgets["base_button_height"],
         )
-        self.manage_button.grid(row=3, column=0, pady=15, sticky="")
 
         # Quit button
-        self.quit_button = self.create_styled_button(
+        self.quit_frame, self.quit_label = self.create_clickable_frame(
             self.menu_frame,
             "Quit",
+            ColorConfig.ERROR_COLOR,
+            row=4,
+            col=0,
+            pady=15,
             command=self._handle_quit,
-            bg_color=ColorConfig.ERROR_COLOR,
+            width=250,
+            height=60,
             font=(FontConfig.FAMILY, FontConfig.BUTTON_SIZE, "bold"),
-            width=self.active_widgets["base_button_width"],
-            height=self.active_widgets["base_button_height"],
         )
-        self.quit_button.grid(row=4, column=0, pady=15, sticky="")
 
     def set_play_game_callback(self, callback: Callable[[], None]) -> None:
         """Set the callback for the play game button."""
@@ -135,35 +141,45 @@ class MainMenuFrame(BaseFrame):
 
     def resize_widgets(self) -> None:
         """Resize widgets for the current window size."""
-        if not hasattr(self, "play_button"):
+        if not hasattr(self, "play_frame"):
             return
 
-        # Get scaled button dimensions
-        if hasattr(self.app, "_get_widget_size"):
-            btn_w, btn_h = self.app._get_widget_size(
-                self.active_widgets.get("base_button_width", WindowConfig.DEFAULT_BUTTON_WIDTH),
-                self.active_widgets.get("base_button_height", WindowConfig.DEFAULT_BUTTON_HEIGHT),
-            )
-        else:
-            # Fallback to configured sizes
-            btn_w = self.active_widgets.get("base_button_width", WindowConfig.DEFAULT_BUTTON_WIDTH)
-            btn_h = self.active_widgets.get(
-                "base_button_height", WindowConfig.DEFAULT_BUTTON_HEIGHT
-            )
+        # Get current window size for scaling
+        try:
+            window_width = self.winfo_toplevel().winfo_width()
+            window_height = self.winfo_toplevel().winfo_height()
+        except tk.TclError:
+            return
 
-        # Update button sizes
-        for button in [self.play_button, self.manage_button, self.quit_button]:
-            if button and button.winfo_exists():
-                button.configure(
-                    width=btn_w // 10, height=btn_h // 20
-                )  # Adjust for character units
+        # Calculate scaling factor based on window size
+        width_scale = window_width / WindowConfig.INITIAL_WIDTH
+        height_scale = window_height / WindowConfig.INITIAL_HEIGHT
+        scale = min(width_scale, height_scale, 2.0)  # Cap at 2x scaling
 
-        # Update fonts if app provides them
-        if hasattr(self.app, "fonts"):
-            if self.title_label and self.title_label.winfo_exists():
-                self.title_label.configure(font=self.app.fonts.get("title_bold"))
+        # Scale button dimensions
+        base_width = self.active_widgets.get("base_button_width", 250)
+        base_height = self.active_widgets.get("base_button_height", 60)
 
-            button_font = self.app.fonts.get("button_bold")
-            for button in [self.play_button, self.manage_button, self.quit_button]:
-                if button and button.winfo_exists():
-                    button.configure(font=button_font)
+        scaled_width = max(int(base_width * scale), 200)  # Minimum 200px wide
+        scaled_height = max(int(base_height * scale), 40)  # Minimum 40px tall
+
+        # Update frame sizes
+        for frame in [self.play_frame, self.manage_frame, self.quit_frame]:
+            if frame and frame.winfo_exists():
+                frame.configure(width=scaled_width, height=scaled_height)
+
+        # Scale fonts
+        base_title_size = self.active_widgets.get("base_title_font_size", FontConfig.TITLE_SIZE)
+        base_button_size = self.active_widgets.get("base_button_font_size", FontConfig.BUTTON_SIZE)
+
+        scaled_title_size = max(int(base_title_size * scale), 20)
+        scaled_button_size = max(int(base_button_size * scale), 12)
+
+        # Update title font
+        if self.title_label and self.title_label.winfo_exists():
+            self.title_label.configure(font=(FontConfig.FAMILY, scaled_title_size, "bold"))
+
+        # Update button fonts
+        for label in [self.play_label, self.manage_label, self.quit_label]:
+            if label and label.winfo_exists():
+                label.configure(font=(FontConfig.FAMILY, scaled_button_size, "bold"))

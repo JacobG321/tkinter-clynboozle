@@ -5,7 +5,7 @@ from tkinter import messagebox
 from typing import List, Optional, Callable, Any
 
 from .base_frame import BaseFrame
-from ..config.settings import ColorConfig, FontConfig
+from ..config.settings import ColorConfig, FontConfig, WindowConfig
 
 
 class TeamSetupFrame(BaseFrame):
@@ -34,28 +34,35 @@ class TeamSetupFrame(BaseFrame):
 
     def build_ui(self):
         """Build the team setup user interface."""
-        # Update active widgets with team setup specific sizes
+        # Update active widgets with team setup specific sizes (in character units)
         self.active_widgets.update(
             {
-                "base_team_num_button_size": 40,
-                "base_change_set_button_width": 180,
-                "base_change_set_button_height": 40,
-                "base_bottom_button_width": 150,
-                "base_bottom_button_height": 50,
+                "base_team_num_button_size": 3,  # 3 characters wide for team count buttons
+                "base_change_set_button_width": 20,  # 20 characters wide
+                "base_change_set_button_height": 2,  # 2 lines tall
+                "base_bottom_button_width": 15,  # 15 characters wide
+                "base_bottom_button_height": 2,  # 2 lines tall
             }
         )
 
-        # Main container with padding
+        # Main container with better centering
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(0, weight=1)
 
+        # Main content frame - centered with max width
         main_frame = tk.Frame(self, bg=ColorConfig.SECONDARY_BG)
-        main_frame.grid(row=0, column=0, sticky="nsew", padx=20, pady=20)
+        main_frame.grid(
+            row=0, column=0, sticky="", padx=40, pady=30
+        )  # Center instead of sticky="nsew"
         main_frame.grid_columnconfigure(0, weight=1)
 
+        # Add some spacing between sections
+        for i in range(5):
+            main_frame.grid_rowconfigure(i, weight=0, minsize=20)
+
         # Title
-        title_label = self.create_title_label(main_frame, "Team Setup")
-        title_label.grid(row=0, column=0, pady=(0, 20))
+        self.title_label = self.create_title_label(main_frame, "Team Setup")
+        self.title_label.grid(row=0, column=0, pady=(0, 20))
 
         # Number of teams section
         self._create_team_count_section(main_frame, row=1)
@@ -72,6 +79,87 @@ class TeamSetupFrame(BaseFrame):
         # Initialize team entries
         self._update_team_entries()
 
+        # Force UI update to ensure entry fields are visible
+        self.update_idletasks()
+
+    def resize_widgets(self) -> None:
+        """Resize widgets for the current window size."""
+        if not hasattr(self, "team_number_frames"):
+            return
+
+        # Get current window size for scaling
+        try:
+            window_width = self.winfo_toplevel().winfo_width()
+            window_height = self.winfo_toplevel().winfo_height()
+        except tk.TclError:
+            return
+
+        # Calculate scaling factor
+        width_scale = window_width / WindowConfig.INITIAL_WIDTH
+        height_scale = window_height / WindowConfig.INITIAL_HEIGHT
+        scale = min(width_scale, height_scale, 2.0)
+
+        # Scale team count buttons
+        base_btn_size = 40
+        scaled_btn_size = max(int(base_btn_size * scale), 30)
+
+        for frame in self.team_number_frames:
+            if frame and frame.winfo_exists():
+                frame.configure(width=scaled_btn_size, height=scaled_btn_size)
+
+        # Scale main action buttons
+        base_width, base_height = 150, 50
+        scaled_width = max(int(base_width * scale), 120)
+        scaled_height = max(int(base_height * scale), 35)
+
+        if hasattr(self, "back_frame") and self.back_frame.winfo_exists():
+            self.back_frame.configure(width=scaled_width, height=scaled_height)
+        if hasattr(self, "start_frame") and self.start_frame.winfo_exists():
+            self.start_frame.configure(width=scaled_width, height=scaled_height)
+        if hasattr(self, "change_set_frame") and self.change_set_frame.winfo_exists():
+            change_width = max(int(200 * scale), 150)
+            change_height = max(int(40 * scale), 30)
+            self.change_set_frame.configure(width=change_width, height=change_height)
+
+        # Scale fonts
+        base_button_size = FontConfig.BUTTON_SIZE
+        base_label_size = FontConfig.LABEL_SIZE
+        base_title_size = FontConfig.TITLE_SIZE
+
+        scaled_button_font = max(int(base_button_size * scale), 10)
+        scaled_label_font = max(int(base_label_size * scale), 10)
+        scaled_title_font = max(int(base_title_size * scale), 16)
+
+        # Update button fonts
+        for label in self.team_number_labels:
+            if label and label.winfo_exists():
+                label.configure(font=(FontConfig.FAMILY, scaled_button_font, "bold"))
+
+        if hasattr(self, "back_label") and self.back_label.winfo_exists():
+            self.back_label.configure(font=(FontConfig.FAMILY, scaled_button_font, "bold"))
+        if hasattr(self, "start_label") and self.start_label.winfo_exists():
+            self.start_label.configure(font=(FontConfig.FAMILY, scaled_button_font, "bold"))
+        if hasattr(self, "change_set_label") and self.change_set_label.winfo_exists():
+            self.change_set_label.configure(font=(FontConfig.FAMILY, scaled_button_font, "bold"))
+
+        # Update static text labels
+        if hasattr(self, "teams_count_label") and self.teams_count_label.winfo_exists():
+            self.teams_count_label.configure(font=(FontConfig.FAMILY, scaled_label_font, "normal"))
+        if hasattr(self, "question_set_label") and self.question_set_label.winfo_exists():
+            self.question_set_label.configure(font=(FontConfig.FAMILY, scaled_label_font, "normal"))
+
+        # Update team name labels
+        for entry_info in self.team_entry_widgets:
+            if "label" in entry_info and entry_info["label"].winfo_exists():
+                entry_info["label"].configure(font=(FontConfig.FAMILY, scaled_label_font, "normal"))
+            # Also scale the entry field fonts
+            if "entry" in entry_info and entry_info["entry"].winfo_exists():
+                entry_info["entry"].configure(font=(FontConfig.FAMILY, scaled_label_font, "normal"))
+
+        # Scale title if it exists
+        if hasattr(self, "title_label") and self.title_label.winfo_exists():
+            self.title_label.configure(font=(FontConfig.FAMILY, scaled_title_font, "bold"))
+
     def _create_team_count_section(self, parent: tk.Widget, row: int):
         """Create the team count selection section."""
         count_frame = tk.Frame(parent, bg=ColorConfig.SECONDARY_BG)
@@ -79,31 +167,40 @@ class TeamSetupFrame(BaseFrame):
         count_frame.grid_columnconfigure(1, weight=1)
 
         # Label
-        label = tk.Label(
+        self.teams_count_label = tk.Label(
             count_frame,
             text="Number of Teams:",
             bg=ColorConfig.SECONDARY_BG,
             fg=ColorConfig.PRIMARY_TEXT,
             font=("Arial", FontConfig.LABEL_SIZE),
         )
-        label.grid(row=0, column=0, padx=(0, 10), sticky="w")
+        self.teams_count_label.grid(row=0, column=0, padx=(0, 10), sticky="w")
 
         # Buttons frame
         buttons_frame = tk.Frame(count_frame, bg=ColorConfig.SECONDARY_BG)
         buttons_frame.grid(row=0, column=1, sticky="w")
 
-        # Create team count buttons (2-6 teams)
+        # Create team count buttons (2-6 teams) using Frame+Label for Mac compatibility
         self.team_number_buttons = []
+        self.team_number_frames = []
+        self.team_number_labels = []
+
         for i in range(2, 7):
-            btn = self.create_styled_button(
+            frame, label = self.create_clickable_frame(
                 buttons_frame,
                 text=str(i),
+                bg_color=ColorConfig.SECONDARY_COLOR,
+                row=0,
+                col=i - 2,
+                padx=2,
                 command=lambda n=i: self._set_team_count(n),
-                width=self.active_widgets["base_team_num_button_size"],
-                height=self.active_widgets["base_team_num_button_size"],
+                width=40,
+                height=40,
+                font=(FontConfig.FAMILY, FontConfig.BUTTON_SIZE, "bold"),
             )
-            btn.grid(row=0, column=i - 2, padx=2)
-            self.team_number_buttons.append(btn)
+            self.team_number_buttons.append((frame, label))  # Store both for compatibility
+            self.team_number_frames.append(frame)
+            self.team_number_labels.append(label)
 
         # Update button states
         self._update_team_count_buttons()
@@ -127,24 +224,27 @@ class TeamSetupFrame(BaseFrame):
             current_set_name = self.app.question_manager.current_set.name
 
         # Question set label
-        label = tk.Label(
+        self.question_set_label = tk.Label(
             qs_frame,
             text=f"Question Set: {current_set_name}",
             bg=ColorConfig.SECONDARY_BG,
             fg=ColorConfig.PRIMARY_TEXT,
             font=("Arial", FontConfig.LABEL_SIZE),
         )
-        label.grid(row=0, column=0, pady=(0, 10))
+        self.question_set_label.grid(row=0, column=0, pady=(0, 10))
 
-        # Change set button
-        btn = self.create_styled_button(
+        # Change set button (using Frame+Label for Mac color compatibility)
+        self.change_set_frame, self.change_set_label = self.create_clickable_frame(
             qs_frame,
-            text="Change Question Set",
+            "Change Question Set",
+            ColorConfig.PRIMARY_COLOR,
+            row=1,
+            col=0,
             command=self._handle_change_question_set,
-            width=self.active_widgets["base_change_set_button_width"],
-            height=self.active_widgets["base_change_set_button_height"],
+            width=200,
+            height=40,
+            font=(FontConfig.FAMILY, FontConfig.SMALL_SIZE, "bold"),
         )
-        btn.grid(row=1, column=0)
 
     def _create_action_buttons(self, parent: tk.Widget, row: int):
         """Create the action buttons (Back and Start Game)."""
@@ -153,25 +253,33 @@ class TeamSetupFrame(BaseFrame):
         button_frame.grid_columnconfigure(0, weight=1)
         button_frame.grid_columnconfigure(1, weight=1)
 
-        # Back button
-        back_btn = self.create_styled_button(
+        # Back button (using Frame+Label for Mac color compatibility)
+        self.back_frame, self.back_label = self.create_clickable_frame(
             button_frame,
-            text="Back",
+            "Back",
+            ColorConfig.SECONDARY_COLOR,
+            row=0,
+            col=0,
+            padx=(0, 10),
             command=self._handle_back,
-            width=self.active_widgets["base_bottom_button_width"],
-            height=self.active_widgets["base_bottom_button_height"],
+            width=150,
+            height=50,
+            font=(FontConfig.FAMILY, FontConfig.BUTTON_SIZE, "bold"),
         )
-        back_btn.grid(row=0, column=0, padx=(0, 10))
 
-        # Start game button
-        start_btn = self.create_styled_button(
+        # Start game button (using Frame+Label for Mac color compatibility)
+        self.start_frame, self.start_label = self.create_clickable_frame(
             button_frame,
-            text="Start Game",
+            "Start Game",
+            ColorConfig.SUCCESS_COLOR,
+            row=0,
+            col=1,
+            padx=(10, 0),
             command=self._handle_start_game,
-            width=self.active_widgets["base_bottom_button_width"],
-            height=self.active_widgets["base_bottom_button_height"],
+            width=150,
+            height=50,
+            font=(FontConfig.FAMILY, FontConfig.BUTTON_SIZE, "bold"),
         )
-        start_btn.grid(row=0, column=1, padx=(10, 0))
 
     def _set_team_count(self, count: int):
         """Set the number of teams and update UI."""
@@ -182,11 +290,15 @@ class TeamSetupFrame(BaseFrame):
     def _update_team_count_buttons(self):
         """Update the visual state of team count buttons."""
         current_count = self.num_teams.get()
-        for i, btn in enumerate(self.team_number_buttons):
+        for i, (frame, label) in enumerate(self.team_number_buttons):
             if i + 2 == current_count:
-                btn.configure(bg=ColorConfig.PRIMARY_COLOR, fg="white")
+                # Selected button - blue background
+                frame.configure(bg=ColorConfig.PRIMARY_COLOR)
+                label.configure(bg=ColorConfig.PRIMARY_COLOR, fg="white")
             else:
-                btn.configure(bg=ColorConfig.SECONDARY_COLOR, fg=ColorConfig.PRIMARY_TEXT)
+                # Unselected button - gray background
+                frame.configure(bg=ColorConfig.SECONDARY_COLOR)
+                label.configure(bg=ColorConfig.SECONDARY_COLOR, fg=ColorConfig.PRIMARY_TEXT)
 
     def _update_team_entries(self):
         """Update the team name entry widgets based on current team count."""
@@ -228,9 +340,14 @@ class TeamSetupFrame(BaseFrame):
                 entry_frame,
                 textvariable=team_var,
                 font=("Arial", FontConfig.SMALL_SIZE),
-                bg=ColorConfig.SECONDARY_BG,
-                fg=ColorConfig.PRIMARY_TEXT,
-                insertbackground=ColorConfig.PRIMARY_TEXT,
+                bg="white",  # Use white background for better visibility
+                fg="black",  # Use black text for contrast
+                insertbackground="black",  # Black cursor
+                highlightthickness=2,
+                highlightcolor=ColorConfig.PRIMARY_COLOR,  # Blue border when focused
+                highlightbackground=ColorConfig.ENTRY_BORDER,  # Gray border when not focused
+                relief="solid",
+                bd=1,
             )
             entry.grid(row=0, column=1, sticky="ew", padx=(10, 0))
 

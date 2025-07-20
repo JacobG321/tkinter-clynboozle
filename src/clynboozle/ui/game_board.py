@@ -103,8 +103,10 @@ class GameBoardFrame(BaseFrame):
                     image_loaded = False
 
                     # Handle media reference system only
-                    if (isinstance(tile_image_data, dict) and
-                            tile_image_data.get("type") == "media_reference"):
+                    if (
+                        isinstance(tile_image_data, dict)
+                        and tile_image_data.get("type") == "media_reference"
+                    ):
                         try:
                             media_id = tile_image_data.get("media_id")
                             if media_id:

@@ -8,6 +8,7 @@ error handling, and proper initialization sequence.
 import tkinter as tk
 import sys
 import traceback
+import logging
 from typing import Optional
 
 from .utils.logging_config import LoggingConfig, get_logger
@@ -17,6 +18,7 @@ from .services.media_service import MediaService
 from .services.audio_service import AudioService
 from .services.file_service import FileService
 from .ui.main_menu import MainMenuFrame
+from .ui.team_setup import TeamSetupFrame
 
 
 class ClynBoozleApp:
@@ -35,17 +37,17 @@ class ClynBoozleApp:
             debug: Enable debug logging and development features
         """
         self.debug = debug
-        self.logger: Optional[object] = None
+        self.logger: Optional[logging.Logger] = None
         self.root: Optional[tk.Tk] = None
-        
+
         # Services
         self.game_service: Optional[GameLogicService] = None
         self.media_service: Optional[MediaService] = None
         self.audio_service: Optional[AudioService] = None
         self.file_service: Optional[FileService] = None
-        
+
         # UI State
-        self.current_frame: Optional[object] = None
+        self.current_frame: Optional[tk.Frame] = None
         self.is_running = False
 
     def run(self) -> int:
@@ -59,18 +61,18 @@ class ClynBoozleApp:
             self._setup_logging()
             self.logger = get_logger(__name__)
             self.logger.info("Starting ClynBoozle application")
-            
+
             self._setup_services()
             self._setup_ui()
             self._start_main_loop()
-            
+
             return 0
-            
+
         except KeyboardInterrupt:
             if self.logger:
                 self.logger.info("Application interrupted by user")
             return 0
-            
+
         except Exception as e:
             if self.logger:
                 self.logger.error(f"Application error: {e}")
@@ -79,7 +81,7 @@ class ClynBoozleApp:
                 print(f"Fatal error during startup: {e}")
                 traceback.print_exc()
             return 1
-            
+
         finally:
             self._cleanup()
 
@@ -95,62 +97,89 @@ class ClynBoozleApp:
         if not self.logger:
             self.logger = get_logger(__name__)
         self.logger.info("Initializing services...")
-        
+
         # Initialize core services with proper base directory
         import os
+
         base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        
+
         self.file_service = FileService(base_dir)
         self.media_service = MediaService(base_dir)
         self.audio_service = AudioService()
         self.game_service = GameLogicService()
-        
+
         self.logger.info("All services initialized successfully")
 
     def _setup_ui(self) -> None:
         """Setup the main UI window and components."""
         self.logger.info("Initializing UI...")
-        
+
         self.root = tk.Tk()
         self.root.title("ClynBoozle")
         self.root.configure(bg="#333333")
-        
+
         # Configure window
         self.root.geometry(f"{WindowConfig.INITIAL_WIDTH}x{WindowConfig.INITIAL_HEIGHT}")
         self.root.minsize(WindowConfig.MIN_WIDTH, WindowConfig.MIN_HEIGHT)
         self.root.resizable(True, True)
-        
+
         # Setup window grid
         self.root.grid_rowconfigure(0, weight=1)
         self.root.grid_columnconfigure(0, weight=1)
-        
+
         # Handle window closing
         self.root.protocol("WM_DELETE_WINDOW", self._on_closing)
-        
+
         # Start with main menu
         self._show_main_menu()
-        
+
         self.logger.info("UI initialized successfully")
 
     def _show_main_menu(self) -> None:
         """Show the main menu."""
         if self.current_frame:
             self.current_frame.destroy()
-        
+
         # Create main menu with service dependencies
         self.current_frame = MainMenuFrame(
-            self.root, 
+            self.root,
             self,  # Pass app instance for navigation
             game_service=self.game_service,
-            media_service=self.media_service
+            media_service=self.media_service,
         )
+
+        # Set up navigation callbacks
+        self.current_frame.set_play_game_callback(self._handle_play_game)
+        self.current_frame.set_manage_questions_callback(self._handle_manage_questions)
+        self.current_frame.set_quit_callback(self._handle_quit)
+
+        self.current_frame.grid(row=0, column=0, sticky="nsew")
+
+    def _show_team_setup(self) -> None:
+        """Show the team setup screen."""
+        if self.current_frame:
+            self.current_frame.destroy()
+
+        # Create team setup frame
+        self.current_frame = TeamSetupFrame(
+            self.root,
+            self,
+        )
+
+        # Set up navigation callbacks
+        self.current_frame.set_callbacks(
+            on_back=self._handle_back_to_main_menu,
+            on_start_game=self._handle_start_new_game,
+            on_change_question_set=self._handle_manage_questions,
+        )
+
         self.current_frame.grid(row=0, column=0, sticky="nsew")
 
     def _start_main_loop(self) -> None:
         """Start the Tkinter main event loop."""
         self.logger.info("Starting main event loop")
         self.is_running = True
-        
+
         try:
             self.root.mainloop()
         except Exception as e:
@@ -170,7 +199,7 @@ class ClynBoozleApp:
         """Cleanup resources before exit."""
         if self.logger:
             self.logger.info("Cleaning up resources...")
-        
+
         # Cleanup audio service
         if self.audio_service:
             try:
@@ -178,36 +207,102 @@ class ClynBoozleApp:
             except Exception as e:
                 if self.logger:
                     self.logger.warning(f"Error cleaning up audio service: {e}")
-        
+
         # Cleanup media service
         if self.media_service:
             try:
                 # Clear any cached images/resources
-                if hasattr(self.media_service, 'clear_cache'):
+                if hasattr(self.media_service, "clear_cache"):
                     self.media_service.clear_cache()
             except Exception as e:
                 if self.logger:
                     self.logger.warning(f"Error cleaning up media service: {e}")
-        
+
         if self.logger:
             self.logger.info("Cleanup completed")
 
+    # Navigation callback handlers
+    def _handle_play_game(self) -> None:
+        """Handle play game button click."""
+        if self.logger:
+            self.logger.info("Play game button clicked - navigating to team setup")
+        self._show_team_setup()
+
+    def _handle_manage_questions(self) -> None:
+        """Handle manage questions button click."""
+        if self.logger:
+            self.logger.info("Manage questions button clicked")
+        try:
+            import tkinter.messagebox as mb
+
+            mb.showinfo(
+                "ClynBoozle",
+                "Question Manager feature is working!\n\nThis will open the question set manager in the full implementation.",
+            )
+        except Exception as e:
+            if self.logger:
+                self.logger.error(f"Error showing manage questions dialog: {e}")
+
+    def _handle_quit(self) -> None:
+        """Handle quit button click."""
+        if self.logger:
+            self.logger.info("Quit button clicked")
+        self._on_closing()
+
+    def _handle_back_to_main_menu(self) -> None:
+        """Handle back to main menu navigation."""
+        if self.logger:
+            self.logger.info("Navigating back to main menu")
+        self._show_main_menu()
+
+    def _handle_start_new_game(self, team_names: list[str]) -> None:
+        """Handle starting a new game with the provided team names."""
+        if self.logger:
+            self.logger.info(f"Starting new game with teams: {team_names}")
+
+        # For now, show a message that the game would start
+        # In the full implementation, this would load a question set and start the game board
+        try:
+            import tkinter.messagebox as mb
+
+            teams_text = "\n".join([f"• {name}" for name in team_names])
+            mb.showinfo(
+                "Game Starting",
+                f"Starting game with {len(team_names)} teams:\n\n{teams_text}\n\nThis would load the game board in the full implementation.",
+            )
+        except Exception as e:
+            if self.logger:
+                self.logger.error(f"Error showing game start dialog: {e}")
+
     # Navigation methods for UI components
     def show_team_setup(self, team_names: Optional[list] = None) -> None:
-        """Navigate to team setup screen."""
+        """
+        Navigate to team setup screen.
+
+        Args:
+            team_names: Optional list of team names to pre-populate
+        """
         # This will be implemented as UI components are refactored
-        self.logger.info("Navigating to team setup")
+        if self.logger:
+            self.logger.info("Navigating to team setup")
         # TODO: Implement with proper UI component
-        
+
     def start_game(self, team_names: list) -> None:
-        """Start a new game with given teams."""
-        self.logger.info(f"Starting game with teams: {team_names}")
+        """
+        Start a new game with given teams.
+
+        Args:
+            team_names: List of team names for the new game
+        """
+        if self.logger:
+            self.logger.info(f"Starting game with teams: {team_names}")
         # TODO: Implement with proper UI component
         # Use team_names parameter when implementing game start logic
-        
+
     def show_question_manager(self) -> None:
         """Show the question set manager."""
-        self.logger.info("Showing question manager")
+        if self.logger:
+            self.logger.info("Showing question manager")
         # TODO: Implement with proper UI component
 
 

@@ -2,7 +2,7 @@
 
 import pytest
 from clynboozle.models.question import Question
-from clynboozle.models.team import Team  
+from clynboozle.models.team import Team
 from clynboozle.models.game_state import GameState
 from clynboozle.utils.exceptions import ValidationError, GameStateError
 
@@ -13,7 +13,7 @@ class TestQuestion:
     def test_question_creation_valid(self):
         """Test creating a valid question."""
         question = Question(question="What is 2+2?", answer="4", points=10)
-        
+
         assert question.question == "What is 2+2?"
         assert question.answer == "4"
         assert question.points == 10
@@ -24,15 +24,12 @@ class TestQuestion:
     def test_question_creation_with_media(self):
         """Test creating a question with media."""
         from clynboozle.models.question import MediaReference
-        
+
         media_ref = MediaReference(media_id="test-id", media_type="image")
         question = Question(
-            question="What is this image?", 
-            answer="A cat", 
-            points=20,
-            question_image=media_ref
+            question="What is this image?", answer="A cat", points=20, question_image=media_ref
         )
-        
+
         assert question.question_image == media_ref
         assert question.has_question_image()
 
@@ -60,7 +57,7 @@ class TestQuestion:
         """Test question serialization."""
         question = Question(question="What is 2+2?", answer="4", points=10)
         result = question.to_dict()
-        
+
         assert result["question"] == "What is 2+2?"
         assert result["answer"] == "4"
         assert result["points"] == 10
@@ -76,9 +73,9 @@ class TestQuestion:
             "points": 10,
             "tile_image": "",
             "question_image": "",
-            "question_audio": ""
+            "question_audio": "",
         }
-        
+
         question = Question.from_dict(data)
         assert question.question == "What is 2+2?"
         assert question.answer == "4"
@@ -94,7 +91,7 @@ class TestTeam:
     def test_team_creation_valid(self):
         """Test creating a valid team."""
         team = Team(name="Team Alpha")
-        
+
         assert team.name == "Team Alpha"
         assert team.score == 0
 
@@ -112,7 +109,7 @@ class TestTeam:
         """Test adding points to team."""
         team = Team(name="Team Alpha")
         team.add_points(50)
-        
+
         assert team.score == 50
 
     def test_team_add_multiple_points(self):
@@ -120,7 +117,7 @@ class TestTeam:
         team = Team(name="Team Alpha")
         team.add_points(30)
         team.add_points(20)
-        
+
         assert team.score == 50
 
     def test_team_subtract_points(self):
@@ -128,7 +125,7 @@ class TestTeam:
         team = Team(name="Team Alpha")
         team.add_points(100)
         team.subtract_points(30)
-        
+
         assert team.score == 70
 
     def test_team_add_negative_points_fails(self):
@@ -142,7 +139,7 @@ class TestTeam:
         team = Team(name="Team Alpha")
         team.add_points(100)
         team.reset_score()
-        
+
         assert team.score == 0
 
     def test_team_equality(self):
@@ -150,7 +147,7 @@ class TestTeam:
         team1 = Team(name="Team Alpha")
         team2 = Team(name="Team Alpha")
         team3 = Team(name="Team Beta")
-        
+
         assert team1 == team2
         assert team1 != team3
 
@@ -158,7 +155,7 @@ class TestTeam:
         """Test team string representation."""
         team = Team(name="Team Alpha")
         team.add_points(50)
-        
+
         assert str(team) == "Team Alpha: 50"
 
 
@@ -169,7 +166,7 @@ class TestGameState:
         """Test creating a game state."""
         teams = sample_teams[:2]  # Use first 2 teams
         game = GameState(teams=teams, questions=sample_questions)
-        
+
         assert len(game.teams) == 2
         assert len(game.questions) == 4
         assert game.current_team_index == 0
@@ -197,17 +194,17 @@ class TestGameState:
         """Test starting a game."""
         game = sample_game_state
         game.start_game()
-        
+
         assert game.status.value == "in_progress"
 
     def test_game_state_next_turn(self, sample_game_state):
         """Test advancing to next turn."""
         game = sample_game_state
         game.start_game()
-        
+
         first_team = game.current_team
         next_team = game.next_team()
-        
+
         assert game.current_team != first_team
         assert game.current_team == next_team
         assert game.current_team_index == 1
@@ -216,11 +213,11 @@ class TestGameState:
         """Test turn wrapping back to first team."""
         game = sample_game_state
         game.start_game()
-        
+
         # Advance through all teams
         game.next_team()  # To team 1
         next_team = game.next_team()  # Should wrap to team 0
-        
+
         assert game.current_team_index == 0
         assert game.current_team == game.teams[0]
         assert next_team == game.teams[0]
@@ -231,7 +228,7 @@ class TestGameState:
         game.start_game()
         game.use_question(0)
         game.use_question(2)
-        
+
         assert 0 in game.used_question_indices
         assert 2 in game.used_question_indices
         assert len(game.used_question_indices) == 2
@@ -240,47 +237,47 @@ class TestGameState:
         """Test checking if question is used."""
         game = sample_game_state
         game.use_question(0)
-        
+
         assert game.is_question_used(0)
         assert not game.is_question_used(1)
 
     def test_game_state_get_team_by_name(self, sample_game_state):
         """Test getting team by name."""
         game = sample_game_state
-        
+
         team = game.get_team_by_name("Team Alpha")
         assert team is not None
         assert team.name == "Team Alpha"
-        
+
         missing_team = game.get_team_by_name("Missing Team")
         assert missing_team is None
 
     def test_game_state_get_winner_no_winner(self, sample_game_state):
         """Test winner detection with no clear winner."""
         game = sample_game_state
-        
+
         # Equal scores
         game.teams[0].add_points(100)
         game.teams[1].add_points(100)
-        
+
         winner = game.get_winner()
         assert winner is None
 
     def test_game_state_get_winner_clear_winner(self, sample_game_state):
         """Test winner detection with clear winner."""
         game = sample_game_state
-        
+
         # Unequal scores
         game.teams[0].add_points(150)
         game.teams[1].add_points(100)
-        
+
         winner = game.get_winner()
         assert winner == game.teams[0]
 
     def test_game_state_total_questions(self, sample_game_state):
         """Test getting total question count."""
         game = sample_game_state
-        
+
         assert game.total_questions == len(game.questions)
         assert game.total_questions == 4
 
@@ -291,9 +288,9 @@ class TestGameState:
         game.next_team()
         game.use_question(0)
         game.teams[0].add_points(50)
-        
+
         game.reset_game()
-        
+
         assert game.status.value == "not_started"
         assert game.current_team_index == 0
         assert len(game.used_question_indices) == 0

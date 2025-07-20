@@ -47,6 +47,9 @@ class BaseFrame(tk.Frame, ABC):
         # Build the UI (implemented by subclasses)
         self.build_ui()
 
+        # Bind resize events automatically
+        self.bind_resize_events()
+
     @abstractmethod
     def build_ui(self) -> None:
         """Build the UI elements for this frame.
@@ -67,6 +70,7 @@ class BaseFrame(tk.Frame, ABC):
         command: Optional[Callable[[], None]] = None,
         width: Optional[int] = None,
         height: Optional[int] = None,
+        font: Optional[Tuple[str, int, str]] = None,
     ) -> Tuple[tk.Frame, tk.Label]:
         """Create a clickable frame with label pattern.
 
@@ -98,7 +102,11 @@ class BaseFrame(tk.Frame, ABC):
             if height:
                 frame.configure(height=height)
 
-        label = tk.Label(frame, text=text, bg=bg_color, fg=ColorConfig.PRIMARY_TEXT)
+        # Create label with optional font styling
+        label_font = font or (FontConfig.FAMILY, FontConfig.BUTTON_SIZE, "bold")
+        label = tk.Label(
+            frame, text=text, bg=bg_color, fg=ColorConfig.PRIMARY_TEXT, font=label_font
+        )
         label.pack(expand=True, fill=tk.BOTH)
 
         # Bind click events if command provided
@@ -154,12 +162,19 @@ class BaseFrame(tk.Frame, ABC):
             fg=fg_color,
             relief="flat",
             bd=0,
+            highlightthickness=0,  # Remove focus border
+            activebackground=bg_color,  # Keep same color when clicked
+            activeforeground=fg_color,  # Keep same text color when clicked
             **kwargs,
         )
 
+        # Force color update (needed on some systems)
+        button.update_idletasks()
+
         # Add hover effects
         def on_enter(event: tk.Event) -> None:
-            button.configure(relief="raised", bd=2)
+            # Darken the background color slightly for hover effect
+            button.configure(relief="raised", bd=1)
 
         def on_leave(event: tk.Event) -> None:
             button.configure(relief="flat", bd=0)
@@ -287,6 +302,10 @@ class BaseFrame(tk.Frame, ABC):
                     widget.configure(width=width, height=height)
                 except tk.TclError:
                     pass  # Widget may not support sizing
+
+        # Call subclass-specific resize method if available
+        if hasattr(self, "resize_widgets"):
+            self.resize_widgets()
 
     def bind_resize_events(self) -> None:
         """Bind resize events to this frame.
