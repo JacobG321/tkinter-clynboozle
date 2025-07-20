@@ -1,8 +1,8 @@
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox, simpledialog
-from PIL import Image, ImageTk
-import io, os, base64, json
-
+import os, json
+from media_manager import MediaManager
+from media_browser import show_media_browser
 
 class QuestionSet:
     """Represents a set of quiz questions"""
@@ -69,6 +69,10 @@ class QuestionSetManager:
             os.path.dirname(os.path.abspath(__file__)), "question_sets"
         )
         os.makedirs(self.sets_dir, exist_ok=True)
+
+        # Initialize media manager
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        self.media_manager = MediaManager(base_dir)
 
         # Add default set if none exist
         self.load_default_set()
@@ -285,6 +289,18 @@ class QuestionSetManager:
             load_btn, text="Load Set", font=("Arial", 12), bg="#2196F3", fg="white"
         )
         load_label.pack(expand=True, fill=tk.BOTH)
+
+        # Manage Media button
+        media_btn = tk.Frame(
+            header_btn_frame, bg="#FF9800", width=120, height=35
+        )  # Orange
+        media_btn.pack(side=tk.LEFT, padx=5)
+        media_btn.pack_propagate(False)
+
+        media_label = tk.Label(
+            media_btn, text="Manage Media", font=("Arial", 12), bg="#FF9800", fg="white"
+        )
+        media_label.pack(expand=True, fill=tk.BOTH)
 
         # Main content frame
         content_frame = tk.Frame(manager_window, bg=bg_color)
@@ -524,72 +540,59 @@ class QuestionSetManager:
 
         def load_image_data(file_path):
             """
-            Load & compress an image to base64; return only JSON-serializable fields.
+            Load an image using the media manager and return media ID.
             """
             if not file_path:
                 return None
 
             try:
-                img = Image.open(file_path)
-                ext = os.path.splitext(file_path)[1].lower()
-                has_alpha = img.mode in ("RGBA", "LA") or ("transparency" in img.info)
-
-                buf = io.BytesIO()
-                if not has_alpha:
-                    rgb = img.convert("RGB")
-                    rgb.save(buf, "JPEG", quality=85, optimize=True, subsampling=0)
-                else:
-                    img.save(buf, "PNG", optimize=True, compress_level=9)
-
-                b64 = base64.b64encode(buf.getvalue()).decode("utf-8")
-
-                return {
-                    "filename": os.path.basename(file_path),
-                    "data": b64,
-                }
+                media_id = self.media_manager.add_image(file_path)
+                if media_id:
+                    media_info = self.media_manager.get_media_info(media_id)
+                    return {
+                        "media_id": media_id,
+                        "filename": media_info.get("original_filename", ""),
+                        "type": "media_reference"
+                    }
+                return None
             except Exception as e:
                 print(f"Error loading image data: {e}")
                 return None
             
         def make_thumbnail(image_data, max_size=(240,160)):
             """
-            From the dict returned by load_image_data,
-            decode & thumbnail it into an ImageTk.PhotoImage.
+            Create a thumbnail from media reference.
             """
-            if not image_data or "data" not in image_data:
+            if not image_data:
                 return None
 
-            raw = base64.b64decode(image_data["data"])
-            img = Image.open(io.BytesIO(raw))
-            try:
-                img.thumbnail(max_size, Image.Resampling.LANCZOS)
-            except (AttributeError, TypeError):
-                img.thumbnail(max_size, Image.LANCZOS if hasattr(Image, "LANCZOS") else Image.ANTIALIAS)
-
-            return ImageTk.PhotoImage(img)
+            # Handle media reference system
+            if isinstance(image_data, dict) and image_data.get("type") == "media_reference":
+                media_id = image_data.get("media_id")
+                if media_id:
+                    return self.media_manager.load_image_for_display(media_id, "thumbnail")
+            
+            return None
 
 
 
         def load_audio(file_path):
             """
-            Load an audio file and convert to base64 for storage.
-            Returns a dict with the base64 data and filename.
+            Load an audio file using the media manager and return media ID.
             """
             if not file_path:
                 return None
 
             try:
-                with open(file_path, "rb") as f:
-                    audio_data = f.read()
-                
-                audio_b64 = base64.b64encode(audio_data).decode("utf-8")
-                
-                return {
-                    "path": file_path,
-                    "filename": os.path.basename(file_path),
-                    "data": audio_b64,
-                }
-
+                media_id = self.media_manager.add_audio(file_path)
+                if media_id:
+                    media_info = self.media_manager.get_media_info(media_id)
+                    return {
+                        "media_id": media_id,
+                        "filename": media_info.get("original_filename", ""),
+                        "type": "media_reference"
+                    }
+                return None
             except Exception as e:
                 print(f"Error loading audio: {e}")
                 return None
@@ -597,31 +600,18 @@ class QuestionSetManager:
 
         def base64_to_image(b64_str, max_size=(240, 160), filename=""):
             """
-            Decode the stored base64 image (JPEG or PNG) and thumbnail it for display.
+            Handle media references for image display.
             """
             if not b64_str:
                 return None
 
-            try:
-                img_data = base64.b64decode(b64_str)
-                img = Image.open(io.BytesIO(img_data))
-
-                try:
-                    img.thumbnail(max_size, Image.Resampling.LANCZOS)
-                except (AttributeError, TypeError):
-                    img.thumbnail(
-                        max_size,
-                        Image.LANCZOS if hasattr(Image, "LANCZOS") else Image.ANTIALIAS
-                    )
-
-                photo_img = ImageTk.PhotoImage(img)
-                if filename:
-                    setattr(photo_img, "filename", filename)
-                return photo_img
-
-            except Exception as e:
-                print(f"Error converting base64 to image: {e}")
-                return None
+            # Handle media reference
+            if isinstance(b64_str, dict) and b64_str.get("type") == "media_reference":
+                media_id = b64_str.get("media_id")
+                if media_id:
+                    return self.media_manager.load_image_for_display(media_id, "thumbnail")
+            
+            return None
 
 
         # Dialog to edit a question
@@ -744,22 +734,19 @@ class QuestionSetManager:
 
             # --- Image data storage & pre-load ---
             image_data = {"tile_image": None, "question_image": None}
-            # If passed in as dict with data+filename
-            if isinstance(tile_image, dict) and tile_image.get("data"):
+            
+            # Handle tile_image - only support media references
+            if isinstance(tile_image, dict) and tile_image.get("type") == "media_reference":
                 image_data["tile_image"] = tile_image
-            elif isinstance(tile_image, str) and tile_image:
-                image_data["tile_image"] = {"data": tile_image, "filename": ""}
-            if isinstance(question_image, dict) and question_image.get("data"):
+                
+            # Handle question_image - only support media references
+            if isinstance(question_image, dict) and question_image.get("type") == "media_reference":
                 image_data["question_image"] = question_image
-            elif isinstance(question_image, str) and question_image:
-                image_data["question_image"] = {"data": question_image, "filename": ""}
 
             # --- Audio data storage & pre-load ---
             audio_data = {"question_audio": None}
-            if isinstance(question_audio, dict) and question_audio.get("data"):
+            if isinstance(question_audio, dict) and question_audio.get("type") == "media_reference":
                 audio_data["question_audio"] = question_audio
-            elif isinstance(question_audio, str) and question_audio:
-                audio_data["question_audio"] = {"data": question_audio, "filename": ""}
 
             # --- Tile Image selector & preview ---
             tk.Label(
@@ -810,9 +797,34 @@ class QuestionSetManager:
                     tile_preview.configure(image="", text="Load Error")
                     tile_filename_var.set("")
 
+            def browse_from_media_library(image_type):
+                """Browse and select from existing media library"""
+                media_data = show_media_browser(
+                    dialog, 
+                    self.media_manager, 
+                    "image", 
+                    f"Select {image_type.title()} Image"
+                )
+                if media_data:
+                    if image_type == "tile":
+                        image_data["tile_image"] = media_data
+                        thumb = make_thumbnail(media_data)
+                        tile_preview.configure(image=thumb, text="")
+                        tile_preview.image = thumb
+                        tile_filename_var.set(f"File: {media_data['filename']}")
+                    elif image_type == "question":
+                        image_data["question_image"] = media_data
+                        thumb = make_thumbnail(media_data)
+                        q_preview.configure(image=thumb, text="")
+                        q_preview.image = thumb
+                        q_filename_var.set(f"File: {media_data['filename']}")
+
             tk.Button(
                 tile_img_frame, text="Select Image", command=browse_tile_image
             ).grid(row=0, column=1, sticky="w")
+            tk.Button(
+                tile_img_frame, text="Browse Media", command=lambda: browse_from_media_library("tile")
+            ).grid(row=0, column=2, sticky="w", padx=(5, 0))
             tk.Button(
                 tile_img_frame,
                 text="Clear Image",
@@ -873,6 +885,9 @@ class QuestionSetManager:
                 q_img_frame, text="Select Image", command=browse_question_image
             ).grid(row=0, column=1, sticky="w")
             tk.Button(
+                q_img_frame, text="Browse Media", command=lambda: browse_from_media_library("question")
+            ).grid(row=0, column=2, sticky="w", padx=(5, 0))
+            tk.Button(
                 q_img_frame,
                 text="Clear Image",
                 command=lambda: (
@@ -927,9 +942,25 @@ class QuestionSetManager:
                     audio_info_label.configure(text="Load Error")
                     audio_filename_var.set("")
 
+            def browse_audio_from_media_library():
+                """Browse and select audio from existing media library"""
+                media_data = show_media_browser(
+                    dialog, 
+                    self.media_manager, 
+                    "audio", 
+                    "Select Question Audio"
+                )
+                if media_data:
+                    audio_data["question_audio"] = media_data
+                    audio_info_label.configure(text="Audio File")
+                    audio_filename_var.set(f"File: {media_data['filename']}")
+
             tk.Button(
                 audio_frame, text="Select Audio", command=browse_question_audio
             ).grid(row=0, column=1, sticky="w")
+            tk.Button(
+                audio_frame, text="Browse Media", command=browse_audio_from_media_library
+            ).grid(row=0, column=2, sticky="w", padx=(5, 0))
             tk.Button(
                 audio_frame,
                 text="Clear Audio",
@@ -941,26 +972,24 @@ class QuestionSetManager:
             ).grid(row=1, column=1, sticky="w")
 
             # Show existing audio if present
-            if audio_data["question_audio"] and audio_data["question_audio"].get("data"):
+            if audio_data["question_audio"] and audio_data["question_audio"].get("type") == "media_reference":
                 audio_info_label.configure(text="Audio File")
                 fn = audio_data["question_audio"].get("filename", "")
                 if fn:
                     audio_filename_var.set(f"File: {fn}")
 
-            # --- If we started with existing base64, show it now ---
-            if image_data["tile_image"] and image_data["tile_image"].get("data"):
-                    thumb = make_thumbnail(image_data["tile_image"])
-                    if thumb:
-                        tile_preview.configure(image=thumb, text="")
-                        tile_preview.image = thumb
-                        fn = image_data["tile_image"]["filename"]
-                        if fn:
-                            tile_filename_var.set(f"File: {fn}")
+            # --- Show existing images if present ---
+            if image_data["tile_image"]:
+                thumb = make_thumbnail(image_data["tile_image"])
+                if thumb:
+                    tile_preview.configure(image=thumb, text="")
+                    tile_preview.image = thumb
+                    fn = image_data["tile_image"].get("filename", "")
+                    if fn:
+                        tile_filename_var.set(f"File: {fn}")
 
-            if image_data["question_image"] and image_data["question_image"].get(
-                "data"
-            ):
-                img = base64_to_image(image_data["question_image"]["data"])
+            if image_data["question_image"]:
+                img = base64_to_image(image_data["question_image"])
                 if img:
                     q_preview.configure(image=img, text="")
                     q_preview.image = img
@@ -993,11 +1022,20 @@ class QuestionSetManager:
                     )
                     return
 
-                # pack both data+filename into a small dict (or "" if none)
-                def pack(img):
-                    if not img:
+                # pack media references
+                def pack(media_item):
+                    if not media_item:
                         return ""
-                    return {"data": img["data"], "filename": img.get("filename", "")}
+                    
+                    # Handle media reference system
+                    if media_item.get("type") == "media_reference":
+                        return {
+                            "media_id": media_item["media_id"],
+                            "filename": media_item.get("filename", ""),
+                            "type": "media_reference"
+                        }
+                    
+                    return ""
 
                 result["value"] = {
                     "question": q,
@@ -1214,6 +1252,10 @@ class QuestionSetManager:
                 # Update the questions view
                 update_questions_view(q_set)
 
+        # Function to manage media library
+        def manage_media():
+            show_media_browser(manager_window, self.media_manager, "image", "Manage Media Library")
+
         # Function to delete a set
         def delete_set():
             q_set = get_selected_set()
@@ -1342,6 +1384,10 @@ class QuestionSetManager:
         # Load Set button
         load_btn.bind("<Button-1>", lambda event: load_set())
         load_label.bind("<Button-1>", lambda event: load_set())
+
+        # Manage Media button
+        media_btn.bind("<Button-1>", lambda event: manage_media())
+        media_label.bind("<Button-1>", lambda event: manage_media())
 
         # Rename button
         rename_btn.bind("<Button-1>", lambda event: rename_set())

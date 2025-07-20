@@ -1,13 +1,13 @@
 import tkinter as tk
 from tkinter import messagebox, font, ttk
 from PIL import Image, ImageTk
-import io, base64
 import tempfile
 import os
 import pygame
 
 # Import the QuestionSetManager class from question_set_manager.py
 from question_set_manager import QuestionSetManager, QuestionSet
+from media_manager import MediaManager
 
 # Default teams (will be customized by the user)
 DEFAULT_TEAMS = ["Team 1", "Team 2", "Team 3"]
@@ -501,41 +501,39 @@ class GameBoardFrame(tk.Frame):
                 inner_frame.pack_propagate(False)  # IMPORTANT: Prevent inner frame from expanding
                 
                 if tile_image_data:
-                    # Handle both string and dict formats
-                    if isinstance(tile_image_data, dict):
-                        image_str = tile_image_data.get("data", "")
-                    else:
-                        image_str = tile_image_data
+                    image_loaded = False
                     
-                    if image_str:
+                    # Handle media reference system only
+                    if isinstance(tile_image_data, dict) and tile_image_data.get("type") == "media_reference":
                         try:
-                            # Convert base64 to image
-                            img_data = base64.b64decode(image_str)
-                            img = Image.open(io.BytesIO(img_data))
-                            # Store original image for later resizing
-                            self.tile_images[idx] = img
-                            
-                            # Create container frame for vertical layout
-                            content_frame = tk.Frame(inner_frame, bg=self.app.button_color)
-                            content_frame.pack(expand=True, fill=tk.BOTH)
-                            content_frame.pack_propagate(False)
-                            
-                            # Create label for image (will be sized in resize method)
-                            btn_label = tk.Label(content_frame, bg=self.app.button_color)
-                            btn_label.pack(expand=True, fill=tk.BOTH)
-                            
-                            # Create label for points below image
-                            points_label = tk.Label(content_frame, text=str(question["points"]),
-                                                bg=self.app.button_color, fg="white")
-                            points_label.pack(side=tk.BOTTOM, pady=(0, 2))
+                            media_id = tile_image_data.get("media_id")
+                            if media_id:
+                                # Get the tile-sized image path
+                                image_path = self.app.media_manager.get_image_path(media_id, "tile")
+                                if image_path:
+                                    img = Image.open(image_path)
+                                    # Store original image for later resizing
+                                    self.tile_images[idx] = img
+                                    image_loaded = True
                         except Exception as e:
                             print(f"Error loading tile image for question {idx}: {e}")
-                            # Fallback to text only
-                            btn_label = tk.Label(inner_frame, text=str(question["points"]),
-                                                bg=self.app.button_color, fg="white")
-                            btn_label.pack(expand=True, fill=tk.BOTH)
+                    
+                    if image_loaded:
+                        # Create container frame for vertical layout
+                        content_frame = tk.Frame(inner_frame, bg=self.app.button_color)
+                        content_frame.pack(expand=True, fill=tk.BOTH)
+                        content_frame.pack_propagate(False)
+                        
+                        # Create label for image (will be sized in resize method)
+                        btn_label = tk.Label(content_frame, bg=self.app.button_color)
+                        btn_label.pack(expand=True, fill=tk.BOTH)
+                        
+                        # Create label for points below image
+                        points_label = tk.Label(content_frame, text=str(question["points"]),
+                                            bg=self.app.button_color, fg="white")
+                        points_label.pack(side=tk.BOTTOM, pady=(0, 2))
                     else:
-                        # No image data, use text
+                        # Fallback to text only
                         btn_label = tk.Label(inner_frame, text=str(question["points"]),
                                             bg=self.app.button_color, fg="white")
                         btn_label.pack(expand=True, fill=tk.BOTH)
@@ -735,6 +733,9 @@ class QuizGame:
         # Question set manager
         self.question_manager = QuestionSetManager(root, self.on_question_set_selected)
 
+        # Media manager - use the same media manager instance as the question manager
+        self.media_manager = self.question_manager.media_manager
+
         # Current screen tracking
         self.current_view = None
         self.active_frame = None
@@ -796,24 +797,49 @@ class QuizGame:
         self.questions = questions
         for q in self.questions:
             qimg = q.get("question_image", "")
-            if isinstance(qimg, dict) and qimg.get("data"):
+            
+            # Handle media reference system only
+            if isinstance(qimg, dict) and qimg.get("type") == "media_reference":
                 try:
-                    raw = base64.b64decode(qimg["data"])
-                    pil = Image.open(io.BytesIO(raw))
-                    q["_question_pil"] = pil   # stash the PIL.Image
-                except Exception:
+                    media_id = qimg.get("media_id")
+                    if media_id:
+                        # Get the question-sized image path
+                        image_path = self.media_manager.get_image_path(media_id, "question")
+                        if image_path:
+                            pil = Image.open(image_path)
+                            q["_question_pil"] = pil
+                        else:
+                            q["_question_pil"] = None
+                    else:
+                        q["_question_pil"] = None
+                except Exception as e:
+                    print(f"Error processing question image: {e}")
                     q["_question_pil"] = None
             else:
                 q["_question_pil"] = None
 
             # Process audio data
             qaudio = q.get("question_audio", "")
-            if isinstance(qaudio, dict) and qaudio.get("data"):
+            
+            # Handle media reference system for audio only
+            if isinstance(qaudio, dict) and qaudio.get("type") == "media_reference":
                 try:
-                    raw_audio = base64.b64decode(qaudio["data"])
-                    q["_question_audio"] = raw_audio   # stash the raw audio data
-                    q["_audio_filename"] = qaudio.get("filename", "audio.wav")
-                except Exception:
+                    media_id = qaudio.get("media_id")
+                    if media_id:
+                        audio_path = self.media_manager.get_audio_path(media_id)
+                        if audio_path:
+                            with open(audio_path, "rb") as f:
+                                raw_audio = f.read()
+                            q["_question_audio"] = raw_audio
+                            q["_audio_filename"] = qaudio.get("filename", "audio.wav")
+                        else:
+                            q["_question_audio"] = None
+                            q["_audio_filename"] = None
+                    else:
+                        q["_question_audio"] = None
+                        q["_audio_filename"] = None
+                except Exception as e:
+                    print(f"Error processing question audio: {e}")
                     q["_question_audio"] = None
                     q["_audio_filename"] = None
             else:
