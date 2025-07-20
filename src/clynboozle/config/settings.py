@@ -34,42 +34,56 @@ class Colors:
     DARK_GRAY = "#444444"
     MEDIUM_GRAY = "#666666"
 
+    # Extended colors for styling system
+    TEXT = WHITE  # Primary text color
+    TEXT_MUTED = LIGHT_GRAY  # Muted text color
+    BUTTON_TEXT = WHITE  # Button text color
+    BUTTON_HOVER = "#777777"  # Button hover state
+    BUTTON_ACTIVE = "#555555"  # Button active/pressed state
+
+    # UI element colors
+    SEPARATOR = MEDIUM_GRAY  # Visual separators
+    TOOLTIP_BG = "#1f1f1f"  # Tooltip background
+    TOOLTIP_TEXT = WHITE  # Tooltip text
+    CARD_BG = "#3a3a3a"  # Card/container backgrounds
+    PANEL_BG = "#404040"  # Panel backgrounds
+
 
 # =============================================================================
 # Modern Color Configuration
 # =============================================================================
 class ColorConfig:
     """Modern UI color constants for consistent theming."""
-    
+
     # Background colors
-    PRIMARY_BG = "#2d2d30"      # Dark background
-    SECONDARY_BG = "#3c3c3c"    # Slightly lighter background
-    TERTIARY_BG = "#464647"     # Component backgrounds
-    
+    PRIMARY_BG = "#2d2d30"  # Dark background
+    SECONDARY_BG = "#3c3c3c"  # Slightly lighter background
+    TERTIARY_BG = "#464647"  # Component backgrounds
+
     # Text colors
-    PRIMARY_TEXT = "#ffffff"     # Main text
-    SECONDARY_TEXT = "#cccccc"   # Secondary text
-    MUTED_TEXT = "#999999"       # Muted/disabled text
-    
+    PRIMARY_TEXT = "#ffffff"  # Main text
+    SECONDARY_TEXT = "#cccccc"  # Secondary text
+    MUTED_TEXT = "#999999"  # Muted/disabled text
+
     # Button and interaction colors
-    PRIMARY_COLOR = "#007acc"    # Primary action color (blue)
+    PRIMARY_COLOR = "#007acc"  # Primary action color (blue)
     SECONDARY_COLOR = "#666666"  # Secondary actions
-    SUCCESS_COLOR = "#4caf50"    # Success/positive actions
-    WARNING_COLOR = "#ff9800"    # Warning actions
-    ERROR_COLOR = "#f44336"      # Error/destructive actions
-    
+    SUCCESS_COLOR = "#4caf50"  # Success/positive actions
+    WARNING_COLOR = "#ff9800"  # Warning actions
+    ERROR_COLOR = "#f44336"  # Error/destructive actions
+
     # Hover and focus states
-    HOVER_COLOR = "#005a9e"      # Hover state for buttons
-    FOCUS_COLOR = "#007acc"      # Focus ring color
-    
+    HOVER_COLOR = "#005a9e"  # Hover state for buttons
+    FOCUS_COLOR = "#007acc"  # Focus ring color
+
     # Input/form colors
-    ENTRY_BG = "#1e1e1e"         # Input field background
-    ENTRY_BORDER = "#464647"     # Input field border
-    
+    ENTRY_BG = "#1e1e1e"  # Input field background
+    ENTRY_BORDER = "#464647"  # Input field border
+
     # Game-specific colors
-    GOLD = "#ffd700"             # Highlights and titles
-    TILE_COLOR = "#555555"       # Game tile color
-    TILE_HOVER = "#666666"       # Game tile hover
+    GOLD = "#ffd700"  # Highlights and titles
+    TILE_COLOR = "#555555"  # Game tile color
+    TILE_HOVER = "#666666"  # Game tile hover
 
 
 # =============================================================================
@@ -86,11 +100,15 @@ class WindowConfig:
     INITIAL_WIDTH = 800
     INITIAL_HEIGHT = 600
 
+    # Default window dimensions (for scaling calculations)
+    DEFAULT_WIDTH = 800
+    DEFAULT_HEIGHT = 600
+
     # Padding and spacing
     DEFAULT_PADDING = 20
     SMALL_PADDING = 10
     LARGE_PADDING = 30
-    
+
     # Modern padding constants
     PADDING_SMALL = 5
     PADDING_MEDIUM = 10
@@ -112,6 +130,7 @@ class FontConfig:
 
     # Font family
     FAMILY = "Arial"
+    DEFAULT_FAMILY = FAMILY  # Alias for consistency
 
     # Standard sizes
     TITLE_SIZE = 36
@@ -119,6 +138,10 @@ class FontConfig:
     LABEL_SIZE = 16
     SMALL_SIZE = 14
     TILE_SIZE = 20
+
+    # Additional size aliases for styling system
+    DEFAULT_SIZE = LABEL_SIZE  # Default text size
+    LARGE_SIZE = 20  # Large text size
 
     # Base font sizes (will be scaled based on window size)
     BASE_SIZES = {

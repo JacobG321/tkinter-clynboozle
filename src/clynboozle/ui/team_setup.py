@@ -10,67 +10,65 @@ from ..config.settings import ColorConfig, FontConfig
 
 class TeamSetupFrame(BaseFrame):
     """Frame for team setup with dynamic team count and name entry."""
-    
+
     def __init__(
-        self, 
-        master: tk.Widget, 
-        app: Any, 
-        initial_names: Optional[List[str]] = None,
-        **kwargs
+        self, master: tk.Widget, app: Any, initial_names: Optional[List[str]] = None, **kwargs
     ) -> None:
         # Team configuration - set these BEFORE calling super().__init__()
         self.initial_names = initial_names or []
         initial_count = len(self.initial_names) if self.initial_names else 3
         self.num_teams = tk.IntVar(value=initial_count)
         self.team_entries: List[tk.StringVar] = []
-        
+
         # Callbacks
         self.on_back: Optional[Callable[[], None]] = None
         self.on_start_game: Optional[Callable[[List[str]], None]] = None
         self.on_change_question_set: Optional[Callable[[], None]] = None
-        
+
         # UI element references
         self.team_number_buttons: List[tk.Widget] = []
         self.team_entry_widgets: List[dict] = []
-        
+
         # Now call super().__init__() which will call build_ui()
         super().__init__(master, app, **kwargs)
 
     def build_ui(self):
         """Build the team setup user interface."""
         # Update active widgets with team setup specific sizes
-        self.active_widgets.update({
-            'base_team_num_button_size': 40,
-            'base_change_set_button_width': 180,
-            'base_change_set_button_height': 40,
-            'base_bottom_button_width': 150,
-            'base_bottom_button_height': 50,
-        })
-        
+        self.active_widgets.update(
+            {
+                "base_team_num_button_size": 40,
+                "base_change_set_button_width": 180,
+                "base_change_set_button_height": 40,
+                "base_bottom_button_width": 150,
+                "base_bottom_button_height": 50,
+            }
+        )
+
         # Main container with padding
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(0, weight=1)
-        
+
         main_frame = tk.Frame(self, bg=ColorConfig.SECONDARY_BG)
         main_frame.grid(row=0, column=0, sticky="nsew", padx=20, pady=20)
         main_frame.grid_columnconfigure(0, weight=1)
-        
+
         # Title
         title_label = self.create_title_label(main_frame, "Team Setup")
         title_label.grid(row=0, column=0, pady=(0, 20))
-        
+
         # Number of teams section
         self._create_team_count_section(main_frame, row=1)
-        
+
         # Team name entries section
         self._create_team_entries_section(main_frame, row=2)
-        
+
         # Question set section
         self._create_question_set_section(main_frame, row=3)
-        
+
         # Action buttons
         self._create_action_buttons(main_frame, row=4)
-        
+
         # Initialize team entries
         self._update_team_entries()
 
@@ -79,21 +77,21 @@ class TeamSetupFrame(BaseFrame):
         count_frame = tk.Frame(parent, bg=ColorConfig.SECONDARY_BG)
         count_frame.grid(row=row, column=0, sticky="ew", pady=(0, 20))
         count_frame.grid_columnconfigure(1, weight=1)
-        
+
         # Label
         label = tk.Label(
-            count_frame, 
+            count_frame,
             text="Number of Teams:",
             bg=ColorConfig.SECONDARY_BG,
             fg=ColorConfig.PRIMARY_TEXT,
-            font=("Arial", FontConfig.LABEL_SIZE)
+            font=("Arial", FontConfig.LABEL_SIZE),
         )
         label.grid(row=0, column=0, padx=(0, 10), sticky="w")
-        
+
         # Buttons frame
         buttons_frame = tk.Frame(count_frame, bg=ColorConfig.SECONDARY_BG)
         buttons_frame.grid(row=0, column=1, sticky="w")
-        
+
         # Create team count buttons (2-6 teams)
         self.team_number_buttons = []
         for i in range(2, 7):
@@ -101,12 +99,12 @@ class TeamSetupFrame(BaseFrame):
                 buttons_frame,
                 text=str(i),
                 command=lambda n=i: self._set_team_count(n),
-                width=self.active_widgets['base_team_num_button_size'],
-                height=self.active_widgets['base_team_num_button_size']
+                width=self.active_widgets["base_team_num_button_size"],
+                height=self.active_widgets["base_team_num_button_size"],
             )
-            btn.grid(row=0, column=i-2, padx=2)
+            btn.grid(row=0, column=i - 2, padx=2)
             self.team_number_buttons.append(btn)
-        
+
         # Update button states
         self._update_team_count_buttons()
 
@@ -122,29 +120,29 @@ class TeamSetupFrame(BaseFrame):
         qs_frame = tk.Frame(parent, bg=ColorConfig.SECONDARY_BG)
         qs_frame.grid(row=row, column=0, sticky="ew", pady=(0, 20))
         qs_frame.grid_columnconfigure(0, weight=1)
-        
+
         # Get current question set name
         current_set_name = "No question set selected"
-        if hasattr(self.app, 'question_manager') and self.app.question_manager.current_set:
+        if hasattr(self.app, "question_manager") and self.app.question_manager.current_set:
             current_set_name = self.app.question_manager.current_set.name
-        
+
         # Question set label
         label = tk.Label(
             qs_frame,
             text=f"Question Set: {current_set_name}",
             bg=ColorConfig.SECONDARY_BG,
             fg=ColorConfig.PRIMARY_TEXT,
-            font=("Arial", FontConfig.LABEL_SIZE)
+            font=("Arial", FontConfig.LABEL_SIZE),
         )
         label.grid(row=0, column=0, pady=(0, 10))
-        
+
         # Change set button
         btn = self.create_styled_button(
             qs_frame,
             text="Change Question Set",
             command=self._handle_change_question_set,
-            width=self.active_widgets['base_change_set_button_width'],
-            height=self.active_widgets['base_change_set_button_height']
+            width=self.active_widgets["base_change_set_button_width"],
+            height=self.active_widgets["base_change_set_button_height"],
         )
         btn.grid(row=1, column=0)
 
@@ -154,24 +152,24 @@ class TeamSetupFrame(BaseFrame):
         button_frame.grid(row=row, column=0, sticky="ew", pady=(20, 0))
         button_frame.grid_columnconfigure(0, weight=1)
         button_frame.grid_columnconfigure(1, weight=1)
-        
+
         # Back button
         back_btn = self.create_styled_button(
             button_frame,
             text="Back",
             command=self._handle_back,
-            width=self.active_widgets['base_bottom_button_width'],
-            height=self.active_widgets['base_bottom_button_height']
+            width=self.active_widgets["base_bottom_button_width"],
+            height=self.active_widgets["base_bottom_button_height"],
         )
         back_btn.grid(row=0, column=0, padx=(0, 10))
-        
+
         # Start game button
         start_btn = self.create_styled_button(
             button_frame,
             text="Start Game",
             command=self._handle_start_game,
-            width=self.active_widgets['base_bottom_button_width'],
-            height=self.active_widgets['base_bottom_button_height']
+            width=self.active_widgets["base_bottom_button_width"],
+            height=self.active_widgets["base_bottom_button_height"],
         )
         start_btn.grid(row=0, column=1, padx=(10, 0))
 
@@ -194,10 +192,10 @@ class TeamSetupFrame(BaseFrame):
         """Update the team name entry widgets based on current team count."""
         # Clear existing entries
         for widget_info in self.team_entry_widgets:
-            widget_info['frame'].destroy()
+            widget_info["frame"].destroy()
         self.team_entry_widgets.clear()
         self.team_entries.clear()
-        
+
         # Create new entries
         count = self.num_teams.get()
         for i in range(count):
@@ -208,12 +206,12 @@ class TeamSetupFrame(BaseFrame):
             else:
                 team_var.set(f"Team {i + 1}")
             self.team_entries.append(team_var)
-            
+
             # Create entry frame
             entry_frame = tk.Frame(self.entries_frame, bg=ColorConfig.SECONDARY_BG)
             entry_frame.grid(row=i, column=0, sticky="ew", pady=2)
             entry_frame.grid_columnconfigure(1, weight=1)
-            
+
             # Team label
             label = tk.Label(
                 entry_frame,
@@ -221,10 +219,10 @@ class TeamSetupFrame(BaseFrame):
                 bg=ColorConfig.SECONDARY_BG,
                 fg=ColorConfig.PRIMARY_TEXT,
                 font=("Arial", FontConfig.LABEL_SIZE),
-                anchor="w"
+                anchor="w",
             )
             label.grid(row=0, column=0, padx=(0, 10), sticky="w")
-            
+
             # Team name entry
             entry = tk.Entry(
                 entry_frame,
@@ -232,17 +230,14 @@ class TeamSetupFrame(BaseFrame):
                 font=("Arial", FontConfig.SMALL_SIZE),
                 bg=ColorConfig.SECONDARY_BG,
                 fg=ColorConfig.PRIMARY_TEXT,
-                insertbackground=ColorConfig.PRIMARY_TEXT
+                insertbackground=ColorConfig.PRIMARY_TEXT,
             )
             entry.grid(row=0, column=1, sticky="ew", padx=(10, 0))
-            
+
             # Store widget references
-            self.team_entry_widgets.append({
-                'frame': entry_frame,
-                'label': label,
-                'entry': entry,
-                'var': team_var
-            })
+            self.team_entry_widgets.append(
+                {"frame": entry_frame, "label": label, "entry": entry, "var": team_var}
+            )
 
     def _handle_change_question_set(self):
         """Handle changing the question set."""
@@ -264,10 +259,12 @@ class TeamSetupFrame(BaseFrame):
                 messagebox.showwarning("Invalid Team Name", "All teams must have names.")
                 return
             if name in team_names:
-                messagebox.showwarning("Duplicate Team Name", f"Team name '{name}' is used more than once.")
+                messagebox.showwarning(
+                    "Duplicate Team Name", f"Team name '{name}' is used more than once."
+                )
                 return
             team_names.append(name)
-        
+
         if self.on_start_game:
             self.on_start_game(team_names)
 
@@ -279,7 +276,7 @@ class TeamSetupFrame(BaseFrame):
         self,
         on_back: Optional[Callable[[], None]] = None,
         on_start_game: Optional[Callable[[List[str]], None]] = None,
-        on_change_question_set: Optional[Callable[[], None]] = None
+        on_change_question_set: Optional[Callable[[], None]] = None,
     ):
         """Set callback functions for UI interactions."""
         if on_back is not None:

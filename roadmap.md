@@ -123,24 +123,24 @@ This refactoring aims to transform the current codebase into a maintainable, pro
   - [x] Inherit from BaseFrame
   - [x] Separate validation logic
   - [x] Improve form handling
-- [ ] Extract `GameBoardFrame` to `src/clynboozle/ui/game_board.py`
-  - [ ] Inherit from BaseFrame
-  - [ ] Simplify tile creation and management
-  - [ ] Separate game logic from display logic
-- [ ] Extract question dialog to `src/clynboozle/ui/question_dialog.py`
-  - [ ] Inherit from BaseDialog
-  - [ ] Separate media handling logic
-  - [ ] Improve layout and responsiveness
+- [x] Extract `GameBoardFrame` to `src/clynboozle/ui/game_board.py`
+  - [x] Inherit from BaseFrame
+  - [x] Simplify tile creation and management
+  - [x] Separate game logic from display logic
+- [x] Extract question dialog to `src/clynboozle/ui/question_dialog.py`
+  - [x] Inherit from BaseDialog
+  - [x] Separate media handling logic
+  - [x] Improve layout and responsiveness
 
 ### 3.3 UI Utilities & Helpers
-- [ ] Create `src/clynboozle/ui/utils.py`
-  - [ ] Font scaling utilities
-  - [ ] Window positioning helpers
-  - [ ] Color and theme utilities
-- [ ] Create `src/clynboozle/ui/styles.py`
-  - [ ] Centralized styling functions
-  - [ ] Theme management
-  - [ ] Consistent styling application
+- [x] Create `src/clynboozle/ui/utils.py`
+  - [x] Font scaling utilities
+  - [x] Window positioning helpers
+  - [x] Color and theme utilities
+- [x] Create `src/clynboozle/ui/styles.py`
+  - [x] Centralized styling functions
+  - [x] Theme management
+  - [x] Consistent styling application
 
 ---
 
