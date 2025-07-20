@@ -522,77 +522,53 @@ class QuestionSetManager:
             if q_set:
                 update_questions_view(q_set)
 
-        # Helper function to load and resize an image
-        def load_image(file_path, max_size=(240, 160)):
+        def load_image_data(file_path):
             """
-            Load an image, serialize a compressed full-resolution copy to base64,
-            and return a thumbnail PhotoImage for display.
+            Load & compress an image to base64; return only JSON-serializable fields.
             """
             if not file_path:
                 return None
 
             try:
-                # --- 1) Open original ---
                 img = Image.open(file_path)
-
-                # --- 2) Serialize full-res with compression ---
-                full_buffer = io.BytesIO()
                 ext = os.path.splitext(file_path)[1].lower()
                 has_alpha = img.mode in ("RGBA", "LA") or ("transparency" in img.info)
-                if not has_alpha and ext in (".jpg", ".jpeg"):
-                    # keep JPEG
+
+                buf = io.BytesIO()
+                if not has_alpha:
                     rgb = img.convert("RGB")
-                    rgb.save(
-                        full_buffer,
-                        format="JPEG",
-                        quality=85,
-                        optimize=True,
-                        subsampling=0
-                    )
-                elif not has_alpha:
-                    # convert anything else to JPEG
-                    rgb = img.convert("RGB")
-                    rgb.save(
-                        full_buffer,
-                        format="JPEG",
-                        quality=85,
-                        optimize=True,
-                        subsampling=0
-                    )
+                    rgb.save(buf, "JPEG", quality=85, optimize=True, subsampling=0)
                 else:
-                    # preserve alpha as optimized PNG
-                    img.save(
-                        full_buffer,
-                        format="PNG",
-                        optimize=True,
-                        compress_level=9
-                    )
+                    img.save(buf, "PNG", optimize=True, compress_level=9)
 
-                full_b64 = base64.b64encode(full_buffer.getvalue()).decode("utf-8")
-
-                # --- 3) Make a thumbnail copy for UI ---
-                thumb = img.copy()
-                try:
-                    thumb.thumbnail(max_size, Image.Resampling.LANCZOS)
-                except (AttributeError, TypeError):
-                    thumb.thumbnail(
-                        max_size,
-                        Image.LANCZOS if hasattr(Image, "LANCZOS") else Image.ANTIALIAS
-                    )
-                photo_img = ImageTk.PhotoImage(thumb)
+                b64 = base64.b64encode(buf.getvalue()).decode("utf-8")
 
                 return {
-                    "path": file_path,
                     "filename": os.path.basename(file_path),
-                    "data": full_b64,         # compressed master image
-                    "photo_img": photo_img,   # small preview
-                    "width": img.width,
-                    "height": img.height,
+                    "data": b64,
                 }
-
             except Exception as e:
-                print(f"Error loading image: {e}")
+                print(f"Error loading image data: {e}")
                 return None
+            
+        def make_thumbnail(image_data, max_size=(240,160)):
+            """
+            From the dict returned by load_image_data,
+            decode & thumbnail it into an ImageTk.PhotoImage.
+            """
+            if not image_data or "data" not in image_data:
+                return None
+
+            raw = base64.b64decode(image_data["data"])
+            img = Image.open(io.BytesIO(raw))
+            try:
+                img.thumbnail(max_size, Image.Resampling.LANCZOS)
+            except (AttributeError, TypeError):
+                img.thumbnail(max_size, Image.LANCZOS if hasattr(Image, "LANCZOS") else Image.ANTIALIAS)
+
+            return ImageTk.PhotoImage(img)
+
+
 
         def load_audio(file_path):
             """
@@ -822,12 +798,14 @@ class QuestionSetManager:
                 )
                 if not path:
                     return
-                img = load_image(path)
-                if img:
-                    image_data["tile_image"] = img
-                    tile_preview.configure(image=img["photo_img"], text="")
-                    tile_preview.image = img["photo_img"]
-                    tile_filename_var.set(f"File: {img['filename']}")
+                img_data = load_image_data(path)
+                if img_data:
+                    image_data["tile_image"] = img_data
+                    thumb = make_thumbnail(img_data)
+                    tile_preview.configure(image=thumb, text="")
+                    tile_preview.image = thumb
+                    tile_filename_var.set(f"File: {img_data['filename']}")
+
                 else:
                     tile_preview.configure(image="", text="Load Error")
                     tile_filename_var.set("")
@@ -880,12 +858,13 @@ class QuestionSetManager:
                 )
                 if not path:
                     return
-                img = load_image(path)
-                if img:
-                    image_data["question_image"] = img
-                    q_preview.configure(image=img["photo_img"], text="")
-                    q_preview.image = img["photo_img"]
-                    q_filename_var.set(f"File: {img['filename']}")
+                img_data = load_image_data(path)
+                if img_data:
+                    image_data["question_image"] = img_data
+                    thumb = make_thumbnail(img_data)
+                    q_preview.configure(image=thumb, text="")
+                    q_preview.image = thumb
+                    q_filename_var.set(f"File: {img_data['filename']}")
                 else:
                     q_preview.configure(image="", text="Load Error")
                     q_filename_var.set("")
@@ -970,13 +949,13 @@ class QuestionSetManager:
 
             # --- If we started with existing base64, show it now ---
             if image_data["tile_image"] and image_data["tile_image"].get("data"):
-                img = base64_to_image(image_data["tile_image"]["data"])
-                if img:
-                    tile_preview.configure(image=img, text="")
-                    tile_preview.image = img
-                    fn = image_data["tile_image"].get("filename", "")
-                    if fn:
-                        tile_filename_var.set(f"File: {fn}")
+                    thumb = make_thumbnail(image_data["tile_image"])
+                    if thumb:
+                        tile_preview.configure(image=thumb, text="")
+                        tile_preview.image = thumb
+                        fn = image_data["tile_image"]["filename"]
+                        if fn:
+                            tile_filename_var.set(f"File: {fn}")
 
             if image_data["question_image"] and image_data["question_image"].get(
                 "data"

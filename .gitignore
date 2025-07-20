@@ -6,3 +6,4 @@ dist/
 *.spec
 .DS_Store
 *.p8
+notes-n-tests/
