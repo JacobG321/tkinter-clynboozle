@@ -1,8 +1,11 @@
+# Core dependencies
+pillow==11.2.1
+pygame==2.6.1
+
+# Build dependencies (for PyInstaller)
 altgraph==0.17.4
 macholib==1.16.3
 packaging==25.0
-pillow==11.2.1
-pygame==2.6.1
 pyinstaller==6.13.0
 pyinstaller-hooks-contrib==2025.3
 setuptools==78.1.1
