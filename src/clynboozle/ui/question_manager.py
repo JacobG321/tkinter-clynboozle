@@ -40,15 +40,15 @@ class QuestionManagerFrame(BaseFrame):
         """
         self.question_set_service = question_set_service
         self.logger = logging.getLogger(__name__)
-        
+
         # Current state
         self.current_set_name: Optional[str] = None
         self.selected_question_index: Optional[int] = None
-        
+
         # Callbacks
         self.on_back: Optional[Callable[[], None]] = None
         self.on_use_set: Optional[Callable[[str], None]] = None
-        
+
         # UI References
         self.set_listbox: Optional[tk.Listbox] = None
         self.question_tree: Optional[ttk.Treeview] = None
@@ -67,15 +67,20 @@ class QuestionManagerFrame(BaseFrame):
         self._build_header()
         self._build_content()
         self._build_footer()
-        
+
         # Load initial data
         self._refresh_question_sets()
 
     def _build_header(self) -> None:
         """Build the header section."""
         header_frame = tk.Frame(self, bg=ColorConfig.PRIMARY_BG)
-        header_frame.grid(row=0, column=0, sticky="ew", padx=WindowConfig.PADDING_LARGE, 
-                         pady=WindowConfig.PADDING_MEDIUM)
+        header_frame.grid(
+            row=0,
+            column=0,
+            sticky="ew",
+            padx=WindowConfig.PADDING_LARGE,
+            pady=WindowConfig.PADDING_MEDIUM,
+        )
 
         # Title
         title_label = self.create_title_label(
@@ -90,42 +95,48 @@ class QuestionManagerFrame(BaseFrame):
         # New Set button container
         new_set_container = tk.Frame(header_btn_frame, bg=ColorConfig.PRIMARY_BG)
         new_set_container.pack(side=tk.LEFT, padx=(0, 5))
-        
+
         self.new_set_frame, self.new_set_label = self.create_clickable_frame(
             new_set_container,
             "New Set",
             ColorConfig.SUCCESS_COLOR,
-            row=0, col=0,
+            row=0,
+            col=0,
             command=self._handle_new_set,
-            width=100, height=35,
+            width=100,
+            height=35,
             font=(FontConfig.FAMILY, FontConfig.SMALL_SIZE, "bold"),
         )
 
         # Import Set button container
         import_container = tk.Frame(header_btn_frame, bg=ColorConfig.PRIMARY_BG)
         import_container.pack(side=tk.LEFT, padx=5)
-        
+
         self.import_frame, self.import_label = self.create_clickable_frame(
             import_container,
             "Import",
             ColorConfig.PRIMARY_COLOR,
-            row=0, col=1,
+            row=0,
+            col=1,
             command=self._handle_import_set,
-            width=100, height=35,
+            width=100,
+            height=35,
             font=(FontConfig.FAMILY, FontConfig.SMALL_SIZE, "bold"),
         )
 
         # Export Set button container
         export_container = tk.Frame(header_btn_frame, bg=ColorConfig.PRIMARY_BG)
         export_container.pack(side=tk.LEFT, padx=5)
-        
+
         self.export_frame, self.export_label = self.create_clickable_frame(
             export_container,
             "Export",
             ColorConfig.WARNING_COLOR,
-            row=0, col=2,
+            row=0,
+            col=2,
             command=self._handle_export_set,
-            width=100, height=35,
+            width=100,
+            height=35,
             font=(FontConfig.FAMILY, FontConfig.SMALL_SIZE, "bold"),
         )
 
@@ -165,14 +176,16 @@ class QuestionManagerFrame(BaseFrame):
         # Delete set button frame
         delete_btn_container = tk.Frame(sets_header, bg=ColorConfig.SECONDARY_BG)
         delete_btn_container.pack(side=tk.RIGHT)
-        
+
         self.delete_set_frame, self.delete_set_label = self.create_clickable_frame(
             delete_btn_container,
             "Delete",
             ColorConfig.ERROR_COLOR,
-            row=0, col=0,
+            row=0,
+            col=0,
             command=self._handle_delete_set,
-            width=70, height=25,
+            width=70,
+            height=25,
             font=(FontConfig.FAMILY, 10, "bold"),
         )
 
@@ -193,7 +206,9 @@ class QuestionManagerFrame(BaseFrame):
         self.set_listbox.grid(row=0, column=0, sticky="nsew")
 
         # Scrollbar for sets list
-        sets_scrollbar = ttk.Scrollbar(sets_list_frame, orient=tk.VERTICAL, command=self.set_listbox.yview)
+        sets_scrollbar = ttk.Scrollbar(
+            sets_list_frame, orient=tk.VERTICAL, command=self.set_listbox.yview
+        )
         sets_scrollbar.grid(row=0, column=1, sticky="ns")
         self.set_listbox.configure(yscrollcommand=sets_scrollbar.set)
 
@@ -230,42 +245,48 @@ class QuestionManagerFrame(BaseFrame):
         # Add question button container
         add_q_container = tk.Frame(q_buttons_frame, bg=ColorConfig.SECONDARY_BG)
         add_q_container.pack(side=tk.LEFT, padx=(0, 5))
-        
+
         self.add_q_frame, self.add_q_label = self.create_clickable_frame(
             add_q_container,
             "Add Question",
             ColorConfig.SUCCESS_COLOR,
-            row=0, col=0,
+            row=0,
+            col=0,
             command=self._handle_add_question,
-            width=120, height=30,
+            width=120,
+            height=30,
             font=(FontConfig.FAMILY, 11, "bold"),
         )
 
         # Edit question button container
         edit_q_container = tk.Frame(q_buttons_frame, bg=ColorConfig.SECONDARY_BG)
         edit_q_container.pack(side=tk.LEFT, padx=5)
-        
+
         self.edit_q_frame, self.edit_q_label = self.create_clickable_frame(
             edit_q_container,
             "Edit",
             ColorConfig.PRIMARY_COLOR,
-            row=0, col=1,
+            row=0,
+            col=1,
             command=self._handle_edit_question,
-            width=60, height=30,
+            width=60,
+            height=30,
             font=(FontConfig.FAMILY, 11, "bold"),
         )
 
         # Delete question button container
         delete_q_container = tk.Frame(q_buttons_frame, bg=ColorConfig.SECONDARY_BG)
         delete_q_container.pack(side=tk.LEFT, padx=5)
-        
+
         self.delete_q_frame, self.delete_q_label = self.create_clickable_frame(
             delete_q_container,
             "Delete",
             ColorConfig.ERROR_COLOR,
-            row=0, col=2,
+            row=0,
+            col=2,
             command=self._handle_delete_question,
-            width=60, height=30,
+            width=60,
+            height=30,
             font=(FontConfig.FAMILY, 11, "bold"),
         )
 
@@ -293,7 +314,9 @@ class QuestionManagerFrame(BaseFrame):
         self.question_tree.grid(row=0, column=0, sticky="nsew")
 
         # Scrollbar for questions tree
-        q_scrollbar = ttk.Scrollbar(questions_list_frame, orient=tk.VERTICAL, command=self.question_tree.yview)
+        q_scrollbar = ttk.Scrollbar(
+            questions_list_frame, orient=tk.VERTICAL, command=self.question_tree.yview
+        )
         q_scrollbar.grid(row=0, column=1, sticky="ns")
         self.question_tree.configure(yscrollcommand=q_scrollbar.set)
 
@@ -304,20 +327,27 @@ class QuestionManagerFrame(BaseFrame):
     def _build_footer(self) -> None:
         """Build the footer with action buttons."""
         footer_frame = tk.Frame(self, bg=ColorConfig.PRIMARY_BG)
-        footer_frame.grid(row=2, column=0, sticky="ew", padx=WindowConfig.PADDING_LARGE, 
-                         pady=WindowConfig.PADDING_MEDIUM)
+        footer_frame.grid(
+            row=2,
+            column=0,
+            sticky="ew",
+            padx=WindowConfig.PADDING_LARGE,
+            pady=WindowConfig.PADDING_MEDIUM,
+        )
 
         # Back button container
         back_container = tk.Frame(footer_frame, bg=ColorConfig.PRIMARY_BG)
         back_container.pack(side=tk.LEFT)
-        
+
         self.back_frame, self.back_label = self.create_clickable_frame(
             back_container,
             "Back",
             ColorConfig.SECONDARY_COLOR,
-            row=0, col=0,
+            row=0,
+            col=0,
             command=self._handle_back,
-            width=100, height=40,
+            width=100,
+            height=40,
             font=(FontConfig.FAMILY, FontConfig.BUTTON_SIZE, "bold"),
         )
 
@@ -328,28 +358,32 @@ class QuestionManagerFrame(BaseFrame):
         # Save button container
         save_container = tk.Frame(right_buttons, bg=ColorConfig.PRIMARY_BG)
         save_container.pack(side=tk.LEFT, padx=5)
-        
+
         self.save_frame, self.save_label = self.create_clickable_frame(
             save_container,
             "Save",
             ColorConfig.SUCCESS_COLOR,
-            row=0, col=0,
+            row=0,
+            col=0,
             command=self._handle_save,
-            width=100, height=40,
+            width=100,
+            height=40,
             font=(FontConfig.FAMILY, FontConfig.BUTTON_SIZE, "bold"),
         )
 
         # Use Set button container
         use_set_container = tk.Frame(right_buttons, bg=ColorConfig.PRIMARY_BG)
         use_set_container.pack(side=tk.LEFT, padx=(5, 0))
-        
+
         self.use_set_frame, self.use_set_label = self.create_clickable_frame(
             use_set_container,
             "Use This Set",
             ColorConfig.PRIMARY_COLOR,
-            row=0, col=0,
+            row=0,
+            col=0,
             command=self._handle_use_set,
-            width=150, height=40,
+            width=150,
+            height=40,
             font=(FontConfig.FAMILY, FontConfig.BUTTON_SIZE, "bold"),
         )
 
@@ -387,7 +421,7 @@ class QuestionManagerFrame(BaseFrame):
                 if question_set == current_set:
                     current_name = set_name
                     break
-            
+
             if current_name:
                 set_names = list(question_sets.keys())
                 if current_name in set_names:
@@ -423,7 +457,7 @@ class QuestionManagerFrame(BaseFrame):
                 media_indicators.append("🖼️")
             if question.has_question_audio():
                 media_indicators.append("🔊")
-            
+
             media_text = " ".join(media_indicators) if media_indicators else ""
 
             # Truncate long text for display
@@ -436,8 +470,7 @@ class QuestionManagerFrame(BaseFrame):
                 answer_text = answer_text[:27] + "..."
 
             self.question_tree.insert(
-                "", tk.END,
-                values=(question_text, answer_text, question.points, media_text)
+                "", tk.END, values=(question_text, answer_text, question.points, media_text)
             )
 
     def _on_set_selection_changed(self, event: tk.Event) -> None:
@@ -480,17 +513,15 @@ class QuestionManagerFrame(BaseFrame):
     def _handle_new_set(self) -> None:
         """Handle new question set creation."""
         name = tk.simpledialog.askstring(
-            "New Question Set",
-            "Enter name for the new question set:",
-            parent=self
+            "New Question Set", "Enter name for the new question set:", parent=self
         )
-        
+
         if name and name.strip():
             try:
                 set_name = self.question_set_service.create_question_set(name.strip())
                 self._refresh_question_sets()
                 self.logger.info(f"Created new question set: {name}")
-                
+
                 # Select the new set
                 question_sets = self.question_set_service.get_all_question_sets()
                 set_names = list(question_sets.keys())
@@ -498,7 +529,7 @@ class QuestionManagerFrame(BaseFrame):
                     index = set_names.index(set_name)
                     self.set_listbox.selection_set(index)
                     self._load_questions_for_set(set_name)
-                    
+
             except Exception as e:
                 messagebox.showerror("Error", f"Failed to create question set: {e}")
 
@@ -515,7 +546,7 @@ class QuestionManagerFrame(BaseFrame):
         # Confirm deletion
         if messagebox.askyesno(
             "Confirm Delete",
-            f"Are you sure you want to delete the question set '{question_set.name}'?\n\nThis action cannot be undone."
+            f"Are you sure you want to delete the question set '{question_set.name}'?\n\nThis action cannot be undone.",
         ):
             try:
                 self.question_set_service.delete_question_set(self.current_set_name)
@@ -531,15 +562,16 @@ class QuestionManagerFrame(BaseFrame):
         file_path = filedialog.askopenfilename(
             title="Import Question Set",
             filetypes=[("JSON Files", "*.json"), ("All Files", "*.*")],
-            parent=self
+            parent=self,
         )
-        
+
         if file_path:
             try:
                 from pathlib import Path
+
                 set_name = self.question_set_service.import_question_set(Path(file_path))
                 self._refresh_question_sets()
-                
+
                 # Select the imported set
                 question_sets = self.question_set_service.get_all_question_sets()
                 set_names = list(question_sets.keys())
@@ -547,7 +579,7 @@ class QuestionManagerFrame(BaseFrame):
                     index = set_names.index(set_name)
                     self.set_listbox.selection_set(index)
                     self._load_questions_for_set(set_name)
-                
+
                 messagebox.showinfo("Success", "Question set imported successfully!")
                 self.logger.info(f"Imported question set from: {file_path}")
             except Exception as e:
@@ -568,13 +600,16 @@ class QuestionManagerFrame(BaseFrame):
             defaultextension=".json",
             filetypes=[("JSON Files", "*.json"), ("All Files", "*.*")],
             initialvalue=f"{question_set.name}.json",
-            parent=self
+            parent=self,
         )
-        
+
         if file_path:
             try:
                 from pathlib import Path
-                self.question_set_service.export_question_set(self.current_set_name, Path(file_path))
+
+                self.question_set_service.export_question_set(
+                    self.current_set_name, Path(file_path)
+                )
                 messagebox.showinfo("Success", "Question set exported successfully!")
                 self.logger.info(f"Exported question set to: {file_path}")
             except Exception as e:
@@ -615,7 +650,7 @@ class QuestionManagerFrame(BaseFrame):
         # Confirm deletion
         if messagebox.askyesno(
             "Confirm Delete",
-            f"Are you sure you want to delete this question?\n\n'{question.question[:100]}...'"
+            f"Are you sure you want to delete this question?\n\n'{question.question[:100]}...'",
         ):
             try:
                 question_set.remove_question(self.selected_question_index)
@@ -664,7 +699,7 @@ class QuestionManagerFrame(BaseFrame):
         dialog.configure(bg=ColorConfig.PRIMARY_BG)
         dialog.transient(self)
         dialog.grab_set()
-        
+
         # Set size and center immediately to avoid positioning jump
         dialog_width = 500
         dialog_height = 400
@@ -673,7 +708,7 @@ class QuestionManagerFrame(BaseFrame):
         x = (screen_width // 2) - (dialog_width // 2)
         y = (screen_height // 2) - (dialog_height // 2)
         dialog.geometry(f"{dialog_width}x{dialog_height}+{x}+{y}")
-        
+
         # Ensure dialog appears on top
         dialog.lift()
         dialog.focus_force()
@@ -691,33 +726,48 @@ class QuestionManagerFrame(BaseFrame):
 
         # Question text
         tk.Label(
-            main_frame, text="Question:", font=(FontConfig.FAMILY, FontConfig.LABEL_SIZE),
-            bg=ColorConfig.PRIMARY_BG, fg=ColorConfig.PRIMARY_TEXT
+            main_frame,
+            text="Question:",
+            font=(FontConfig.FAMILY, FontConfig.LABEL_SIZE),
+            bg=ColorConfig.PRIMARY_BG,
+            fg=ColorConfig.PRIMARY_TEXT,
         ).pack(anchor="w")
 
         question_text = tk.Text(
-            main_frame, height=4, font=(FontConfig.FAMILY, FontConfig.SMALL_SIZE),
-            bg=ColorConfig.ENTRY_BG, fg=ColorConfig.PRIMARY_TEXT
+            main_frame,
+            height=4,
+            font=(FontConfig.FAMILY, FontConfig.SMALL_SIZE),
+            bg=ColorConfig.ENTRY_BG,
+            fg=ColorConfig.PRIMARY_TEXT,
         )
         question_text.pack(fill=tk.X, pady=(5, 10))
 
         # Answer
         tk.Label(
-            main_frame, text="Answer:", font=(FontConfig.FAMILY, FontConfig.LABEL_SIZE),
-            bg=ColorConfig.PRIMARY_BG, fg=ColorConfig.PRIMARY_TEXT
+            main_frame,
+            text="Answer:",
+            font=(FontConfig.FAMILY, FontConfig.LABEL_SIZE),
+            bg=ColorConfig.PRIMARY_BG,
+            fg=ColorConfig.PRIMARY_TEXT,
         ).pack(anchor="w")
 
         answer_var = tk.StringVar()
         answer_entry = tk.Entry(
-            main_frame, textvariable=answer_var, font=(FontConfig.FAMILY, FontConfig.SMALL_SIZE),
-            bg=ColorConfig.ENTRY_BG, fg=ColorConfig.PRIMARY_TEXT
+            main_frame,
+            textvariable=answer_var,
+            font=(FontConfig.FAMILY, FontConfig.SMALL_SIZE),
+            bg=ColorConfig.ENTRY_BG,
+            fg=ColorConfig.PRIMARY_TEXT,
         )
         answer_entry.pack(fill=tk.X, pady=(5, 10))
 
         # Points
         tk.Label(
-            main_frame, text="Points:", font=(FontConfig.FAMILY, FontConfig.LABEL_SIZE),
-            bg=ColorConfig.PRIMARY_BG, fg=ColorConfig.PRIMARY_TEXT
+            main_frame,
+            text="Points:",
+            font=(FontConfig.FAMILY, FontConfig.LABEL_SIZE),
+            bg=ColorConfig.PRIMARY_BG,
+            fg=ColorConfig.PRIMARY_TEXT,
         ).pack(anchor="w")
 
         points_var = tk.StringVar(value="10")
@@ -725,10 +775,12 @@ class QuestionManagerFrame(BaseFrame):
         points_frame.pack(fill=tk.X, pady=(5, 20))
 
         points_combo = ttk.Combobox(
-            points_frame, textvariable=points_var,
+            points_frame,
+            textvariable=points_var,
             values=["5", "10", "15", "20", "25", "30", "50", "100"],
-            width=10, font=(FontConfig.FAMILY, FontConfig.SMALL_SIZE),
-            state="readonly"
+            width=10,
+            font=(FontConfig.FAMILY, FontConfig.SMALL_SIZE),
+            state="readonly",
         )
         points_combo.pack(side=tk.LEFT)
 
@@ -776,28 +828,32 @@ class QuestionManagerFrame(BaseFrame):
         # Cancel button container
         cancel_container = tk.Frame(button_frame, bg=ColorConfig.PRIMARY_BG)
         cancel_container.grid(row=0, column=1, padx=(0, 5))
-        
+
         cancel_frame, cancel_label = self.create_clickable_frame(
             cancel_container,
             "Cancel",
             ColorConfig.SECONDARY_COLOR,
-            row=0, col=0,
+            row=0,
+            col=0,
             command=dialog.destroy,
-            width=80, height=35,
+            width=80,
+            height=35,
             font=(FontConfig.FAMILY, FontConfig.SMALL_SIZE, "bold"),
         )
 
         # Save button container
         save_container = tk.Frame(button_frame, bg=ColorConfig.PRIMARY_BG)
         save_container.grid(row=0, column=2, padx=(5, 0))
-        
+
         save_frame, save_label = self.create_clickable_frame(
             save_container,
             "Save",
             ColorConfig.SUCCESS_COLOR,
-            row=0, col=0,
+            row=0,
+            col=0,
             command=save_question,
-            width=80, height=35,
+            width=80,
+            height=35,
             font=(FontConfig.FAMILY, FontConfig.SMALL_SIZE, "bold"),
         )
 

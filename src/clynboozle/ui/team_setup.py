@@ -286,6 +286,10 @@ class TeamSetupFrame(BaseFrame):
         self.num_teams.set(count)
         self._update_team_count_buttons()
         self._update_team_entries()
+        
+        # Force widget resizing after creating new team entries
+        self.update_idletasks()
+        self.resize_widgets()
 
     def _update_team_count_buttons(self):
         """Update the visual state of team count buttons."""

@@ -292,11 +292,11 @@ class ClynBoozleApp:
         """Handle using a question set (return to main menu with set selected)."""
         if self.logger:
             self.logger.info(f"Question set selected: {set_name}")
-        
+
         # Set the selected question set as current
         if self.question_set_service:
             self.question_set_service.set_current_question_set(set_name)
-        
+
         # Return to main menu
         self._show_main_menu()
 

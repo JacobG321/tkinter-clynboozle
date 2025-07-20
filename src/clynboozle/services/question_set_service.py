@@ -210,9 +210,7 @@ class QuestionSetService:
     def _generate_filename(self, name: str) -> str:
         """Generate a safe filename from question set name."""
         # Sanitize name for filename
-        safe_name = "".join(
-            c if c in Validation.SAFE_FILENAME_CHARS else "_" for c in name.lower()
-        )
+        safe_name = "".join(c if c in Validation.SAFE_FILENAME_CHARS else "_" for c in name.lower())
 
         # Remove multiple underscores
         while "__" in safe_name:
