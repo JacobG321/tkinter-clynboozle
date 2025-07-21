@@ -6,10 +6,11 @@ error handling, and proper initialization sequence.
 """
 
 import tkinter as tk
+from tkinter import messagebox
 import sys
 import traceback
 import logging
-from typing import Optional
+from typing import Optional, List
 
 from .utils.logging_config import LoggingConfig, get_logger
 from .config.settings import WindowConfig, GameConfig
@@ -21,6 +22,8 @@ from .services.question_set_service import QuestionSetService
 from .ui.main_menu import MainMenuFrame
 from .ui.team_setup import TeamSetupFrame
 from .ui.question_manager import QuestionManagerFrame
+from .ui.question_set_selector import QuestionSetSelectorFrame
+from .ui.simple_game_board import SimpleGameBoardFrame
 
 
 class ClynBoozleApp:
@@ -52,6 +55,10 @@ class ClynBoozleApp:
         # UI State
         self.current_frame: Optional[tk.Frame] = None
         self.is_running = False
+        
+        # Game state for navigation
+        self.selected_teams: Optional[List[str]] = None
+        self.selected_question_set: Optional[str] = None
 
     def run(self) -> int:
         """
@@ -171,10 +178,9 @@ class ClynBoozleApp:
             question_set_service=self.question_set_service,
         )
 
-        # Set up navigation callbacks
+        # Set up navigation callbacks (no "use set" button for management screen)
         self.current_frame.set_callbacks(
             on_back=self._handle_back_to_main_menu,
-            on_use_set=self._handle_use_question_set,
         )
 
         self.current_frame.grid(row=0, column=0, sticky="nsew")
@@ -193,10 +199,76 @@ class ClynBoozleApp:
         self.current_frame.set_callbacks(
             on_back=self._handle_back_to_main_menu,
             on_start_game=self._handle_start_new_game,
-            on_change_question_set=self._handle_manage_questions,
+            on_change_question_set=self._handle_select_question_set,
         )
 
         self.current_frame.grid(row=0, column=0, sticky="nsew")
+
+    def _show_question_set_selector(self) -> None:
+        """Show the question set selector screen for pre-game setup."""
+        if self.current_frame:
+            self.current_frame.destroy()
+
+        # Create question set selector frame
+        self.current_frame = QuestionSetSelectorFrame(
+            self.root,
+            self,
+            question_set_service=self.question_set_service,
+        )
+
+        # Set up navigation callbacks
+        self.current_frame.set_callbacks(
+            on_back=self._handle_back_to_team_setup,
+            on_select_set=self._handle_question_set_selected,
+        )
+
+        self.current_frame.grid(row=0, column=0, sticky="nsew")
+
+    def _show_game_board(self) -> None:
+        """Show the game board screen."""
+        if self.current_frame:
+            self.current_frame.destroy()
+
+        # Ensure we have teams and a question set
+        if not self.selected_teams or not self.selected_question_set:
+            self.logger.error("Cannot start game without teams and question set")
+            self._show_main_menu()
+            return
+
+        # Get the question set
+        question_set = self.question_set_service.get_question_set(self.selected_question_set)
+        if not question_set:
+            self.logger.error(f"Question set not found: {self.selected_question_set}")
+            self._show_main_menu()
+            return
+
+        # Create game using the game service
+        try:
+            game = self.game_service.create_game(self.selected_teams, question_set.questions)
+            self.game_service.start_game()
+
+            # Create game board frame
+            self.current_frame = SimpleGameBoardFrame(
+                self.root,
+                self,
+                teams=self.selected_teams,
+                game_service=self.game_service,
+                media_service=self.media_service,
+                audio_service=self.audio_service,
+            )
+
+            # Set up navigation callbacks
+            self.current_frame.set_callbacks(
+                on_back=self._handle_back_to_main_menu,
+                on_new_game=self._handle_new_game,
+            )
+
+            self.current_frame.grid(row=0, column=0, sticky="nsew")
+
+        except Exception as e:
+            self.logger.error(f"Failed to start game: {e}")
+            messagebox.showerror("Game Start Error", f"Failed to start game: {e}")
+            self._show_main_menu()
 
     def _start_main_loop(self) -> None:
         """Start the Tkinter main event loop."""
@@ -269,36 +341,67 @@ class ClynBoozleApp:
             self.logger.info("Navigating back to main menu")
         self._show_main_menu()
 
-    def _handle_start_new_game(self, team_names: list[str]) -> None:
+    def _handle_start_new_game(self, team_names: List[str]) -> None:
         """Handle starting a new game with the provided team names."""
         if self.logger:
             self.logger.info(f"Starting new game with teams: {team_names}")
 
-        # For now, show a message that the game would start
-        # In the full implementation, this would load a question set and start the game board
-        try:
-            import tkinter.messagebox as mb
+        # Store team names for game creation
+        self.selected_teams = team_names
 
-            teams_text = "\n".join([f"• {name}" for name in team_names])
-            mb.showinfo(
-                "Game Starting",
-                f"Starting game with {len(team_names)} teams:\n\n{teams_text}\n\nThis would load the game board in the full implementation.",
-            )
-        except Exception as e:
-            if self.logger:
-                self.logger.error(f"Error showing game start dialog: {e}")
+        # Check if we have a question set selected
+        current_set = self.question_set_service.get_current_question_set()
+        if current_set:
+            # We have a question set, proceed directly to game
+            set_name = None
+            # Find the set name
+            for name, qs in self.question_set_service.get_all_question_sets().items():
+                if qs == current_set:
+                    set_name = name
+                    break
+            if set_name:
+                self.selected_question_set = set_name
+                self._show_game_board()
+                return
 
-    def _handle_use_question_set(self, set_name: str) -> None:
-        """Handle using a question set (return to main menu with set selected)."""
+        # No question set selected, go to selector
+        self._show_question_set_selector()
+
+    def _handle_select_question_set(self) -> None:
+        """Handle request to select/change question set from team setup."""
+        if self.logger:
+            self.logger.info("Navigate to question set selector from team setup")
+        self._show_question_set_selector()
+
+    def _handle_back_to_team_setup(self) -> None:
+        """Handle back to team setup navigation."""
+        if self.logger:
+            self.logger.info("Navigating back to team setup")
+        self._show_team_setup()
+
+    def _handle_question_set_selected(self, set_name: str) -> None:
+        """Handle question set selection from selector."""
         if self.logger:
             self.logger.info(f"Question set selected: {set_name}")
 
-        # Set the selected question set as current
-        if self.question_set_service:
-            self.question_set_service.set_current_question_set(set_name)
+        # Store the selected question set
+        self.selected_question_set = set_name
 
-        # Return to main menu
-        self._show_main_menu()
+        # If we have teams selected, start the game, otherwise go to team setup
+        if self.selected_teams:
+            self._show_game_board()
+        else:
+            self._show_team_setup()
+
+    def _handle_new_game(self) -> None:
+        """Handle starting a completely new game."""
+        if self.logger:
+            self.logger.info("Starting new game from game board")
+        
+        # Clear selections and go to team setup
+        self.selected_teams = None
+        self.selected_question_set = None
+        self._show_team_setup()
 
     # Navigation methods for UI components
     def show_team_setup(self, team_names: Optional[list] = None) -> None:

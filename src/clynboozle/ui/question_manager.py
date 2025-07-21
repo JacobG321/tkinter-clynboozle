@@ -48,7 +48,6 @@ class QuestionManagerFrame(BaseFrame):
 
         # Callbacks
         self.on_back: Optional[Callable[[], None]] = None
-        self.on_use_set: Optional[Callable[[str], None]] = None
 
         # UI References
         self.set_listbox: Optional[tk.Listbox] = None
@@ -372,30 +371,13 @@ class QuestionManagerFrame(BaseFrame):
             font=(FontConfig.FAMILY, FontConfig.BUTTON_SIZE, "bold"),
         )
 
-        # Use Set button container
-        use_set_container = tk.Frame(right_buttons, bg=ColorConfig.PRIMARY_BG)
-        use_set_container.pack(side=tk.LEFT, padx=(5, 0))
-
-        self.use_set_frame, self.use_set_label = self.create_clickable_frame(
-            use_set_container,
-            "Use This Set",
-            ColorConfig.PRIMARY_COLOR,
-            row=0,
-            col=0,
-            command=self._handle_use_set,
-            width=150,
-            height=40,
-            font=(FontConfig.FAMILY, FontConfig.BUTTON_SIZE, "bold"),
-        )
 
     def set_callbacks(
         self,
         on_back: Optional[Callable[[], None]] = None,
-        on_use_set: Optional[Callable[[str], None]] = None,
     ) -> None:
         """Set navigation callbacks."""
         self.on_back = on_back
-        self.on_use_set = on_use_set
 
     def _refresh_question_sets(self) -> None:
         """Refresh the question sets list."""
@@ -678,14 +660,6 @@ class QuestionManagerFrame(BaseFrame):
         except Exception as e:
             messagebox.showerror("Save Error", f"Failed to save question set: {e}")
 
-    def _handle_use_set(self) -> None:
-        """Handle using the selected question set."""
-        if not self.current_set_name:
-            messagebox.showwarning("No Set Selected", "Please select a question set to use.")
-            return
-
-        if self.on_use_set:
-            self.on_use_set(self.current_set_name)
 
     def _handle_back(self) -> None:
         """Handle back button click."""

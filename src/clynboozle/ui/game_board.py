@@ -11,13 +11,23 @@ from .base_frame import BaseFrame
 class GameBoardFrame(BaseFrame):
     """Frame subclass for the main Game Board screen."""
 
-    def __init__(self, master, app, teams: Dict[str, int], **kwargs):
+    def __init__(self, master, app, teams: Dict[str, int], 
+                 game_service=None, media_service=None, audio_service=None, **kwargs):
         self.teams = teams  # dict {team_name: score}
         self.grid_rows = 1
         self.grid_cols = 1
         self.used_tiles = set()
         self.current_team = None
         self.tile_images = {}  # Store tile images by question index
+
+        # Store service dependencies
+        self.game_service = game_service
+        self.media_service = media_service
+        self.audio_service = audio_service
+
+        # Callbacks
+        self.on_back = None
+        self.on_new_game = None
 
         # UI element references
         self.team_number_buttons: List[dict] = []
@@ -342,3 +352,10 @@ class GameBoardFrame(BaseFrame):
             self.active_widgets["menu_frame"].configure(width=menu_btn_w, height=menu_btn_h)
         if "menu_label" in self.active_widgets and self.active_widgets["menu_label"].winfo_exists():
             self.active_widgets["menu_label"].configure(font=self.app.fonts["menu_button"])
+
+    def set_callbacks(self, on_back=None, on_new_game=None):
+        """Set navigation callbacks."""
+        if on_back is not None:
+            self.on_back = on_back
+        if on_new_game is not None:
+            self.on_new_game = on_new_game
